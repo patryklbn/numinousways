@@ -2,7 +2,7 @@
   "project_info": {
     "project_number": "1066286491380",
     "project_id": "numinousway",
-    "storage_bucket": "numinousway.appspot.com"
+    "storage_bucket": "numinousway.firebasestorage.app"
   },
   "client": [
     {
@@ -12,7 +12,20 @@
           "package_name": "com.example.numinous_way"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1066286491380-ut2rkh3l8au084g7n3rg9t8vhqo3g56f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.numinous_way",
+            "certificate_hash": "ffe684d8d1eddf57ba9f9f037af5a9ffbb90690d"
+          }
+        },
+        {
+          "client_id": "1066286491380-ri4akrk0rohuqirttp2hcs0sqfhbu3j4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBqA0whJerw4d6k8qD5QucSHiWTW9HZIBY"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1066286491380-ri4akrk0rohuqirttp2hcs0sqfhbu3j4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1066286491380-askhrhk22scijs7b84a7692rnh0esq8b.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.numinousWay"
+              }
+            }
+          ]
         }
       }
     }

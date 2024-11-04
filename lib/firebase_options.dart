@@ -54,7 +54,7 @@ class DefaultFirebaseOptions {
     appId: '1:1066286491380:android:0403c8d48049d617ae20a1',
     messagingSenderId: '1066286491380',
     projectId: 'numinousway',
-    storageBucket: 'numinousway.appspot.com',
+    storageBucket: 'numinousway.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
