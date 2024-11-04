@@ -2,6 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CLIENT_ID</key>
+	<string>1066286491380-askhrhk22scijs7b84a7692rnh0esq8b.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.1066286491380-askhrhk22scijs7b84a7692rnh0esq8b</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>1066286491380-ut2rkh3l8au084g7n3rg9t8vhqo3g56f.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyATOM06A-m0WZSJgsQplZWOusweQCY7S_s</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +19,7 @@
 	<key>PROJECT_ID</key>
 	<string>numinousway</string>
 	<key>STORAGE_BUCKET</key>
-	<string>numinousway.appspot.com</string>
+	<string>numinousway.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
