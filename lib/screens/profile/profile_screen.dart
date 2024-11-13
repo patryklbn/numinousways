@@ -17,7 +17,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late ProfileViewModel profileViewModel;
-  bool showLikedImages = true; // Tracks the selected gallery view
+  bool showLikedImages = true;
   final Random random = Random();
 
   @override
@@ -31,6 +31,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const String defaultAvatarUrl = 'https://firebasestorage.googleapis.com/v0/b/numinousway.firebasestorage.app/o/profile_images%2Fdefault_avatar.png?alt=media&token=d6afd74a-433c-4713-b8fc-73ffaa18d49c';
+
     return Scaffold(
       backgroundColor: Color(0xFFEFF3F7),
       appBar: AppBar(
@@ -64,7 +66,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return Column(
             children: [
               SizedBox(height: 20),
-              // Profile Picture with Edit Overlay
               Stack(
                 alignment: Alignment.bottomRight,
                 children: [
@@ -73,9 +74,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     backgroundColor: Colors.white,
                     child: CircleAvatar(
                       radius: 65,
-                      backgroundImage: profileViewModel.profileImageUrl != null
-                          ? NetworkImage(profileViewModel.profileImageUrl!)
-                          : AssetImage('assets/default_avatar.png') as ImageProvider,
+                      backgroundColor: Colors.grey[200],
+                      child: ClipOval(
+                        child: Image.network(
+                          profileViewModel.profileImageUrl ?? defaultAvatarUrl,
+                          fit: BoxFit.cover,
+                          width: 130,
+                          height: 130,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.asset(
+                              'assets/default_avatar.png',
+                              fit: BoxFit.cover,
+                              width: 130,
+                              height: 130,
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
                   if (widget.userId == widget.loggedInUserId)
@@ -112,7 +127,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               SizedBox(height: 20),
-              // Toggle Buttons for Liked and Generated Images
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -129,7 +143,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   }),
                 ],
               ),
-              // Divider
               Divider(
                 thickness: 1.2,
                 color: Colors.grey[400],
@@ -137,7 +150,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 indent: 20,
                 endIndent: 20,
               ),
-              // Masonry Grid for Liked or Generated Images
               Expanded(
                 child: showLikedImages
                     ? _buildMasonryGrid("Liked images will appear here")
@@ -150,7 +162,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Toggle button with a gradient and elevated style
   Widget _buildGradientButton(String text, bool isSelected, VoidCallback onPressed) {
     return Container(
       decoration: BoxDecoration(
@@ -186,14 +197,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Masonry grid with varied item heights for a mosaic effect and rounded corners
   Widget _buildMasonryGrid(String placeholderText) {
     return MasonryGridView.count(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
       crossAxisCount: 3,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
-      itemCount: 20, // Simulating a larger item count
+      itemCount: 20,
       itemBuilder: (context, index) {
         final randomHeight = 100 + random.nextInt(100);
 

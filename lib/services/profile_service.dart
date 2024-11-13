@@ -1,11 +1,30 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:image/image.dart' as img;
+import 'package:path_provider/path_provider.dart';
 import '../models/user_profile.dart';
 
 class ProfileService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
+
+  // Compress image before uploading
+  Future<File> compressImage(File file) async {
+    final bytes = await file.readAsBytes();
+    img.Image? image = img.decodeImage(bytes);
+    if (image == null) return file;
+
+    img.Image resizedImage = img.copyResize(image, width: 150, height: 150);
+    final compressedBytes = img.encodeJpg(resizedImage, quality: 80);
+
+    final tempDir = await getTemporaryDirectory();
+    final compressedFile = File('${tempDir.path}/compressed_profile_pic.jpg');
+    await compressedFile.writeAsBytes(compressedBytes);
+
+    return compressedFile;
+  }
 
   // Fetch user profile data
   Future<UserProfile?> getUserProfile(String userId) async {
@@ -29,9 +48,18 @@ class ProfileService {
   // Upload profile image and return download URL
   Future<String?> uploadProfileImage(File imageFile, String userId) async {
     try {
+      File compressedImage = await compressImage(imageFile);
       final storageRef = _storage.ref().child('profile_images/$userId');
-      await storageRef.putFile(imageFile);
+      await storageRef.putFile(compressedImage);
       final downloadUrl = await storageRef.getDownloadURL();
+
+      // Update Firestore with new image URL
+      final userProfile = await getUserProfile(userId);
+      if (userProfile != null) {
+        userProfile.profileImageUrl = downloadUrl;
+        await updateUserProfile(userProfile);
+      }
+
       return downloadUrl;
     } on FirebaseException catch (e) {
       print("FirebaseException in uploadProfileImage: $e");

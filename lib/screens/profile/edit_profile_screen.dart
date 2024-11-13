@@ -18,6 +18,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
+  // Firebase URL for the default avatar
+  final String defaultAvatarUrl = 'https://firebasestorage.googleapis.com/v0/b/numinousway.firebasestorage.app/o/profile_images%2Fdefault_avatar.png?alt=media&token=d6afd74a-433c-4713-b8fc-73ffaa18d49c';
+
   @override
   void initState() {
     super.initState();
@@ -103,18 +106,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              // Profile Picture with Camera Overlay
               Center(
                 child: Stack(
                   alignment: Alignment.bottomRight,
                   children: [
                     CircleAvatar(
                       radius: 60,
-                      backgroundImage: _selectedImage != null
-                          ? FileImage(_selectedImage!)
-                          : (profileViewModel.profileImageUrl != null
-                          ? NetworkImage(profileViewModel.profileImageUrl!)
-                          : AssetImage('assets/default_avatar.png')) as ImageProvider,
+                      backgroundColor: Colors.white,
+                      child: ClipOval(
+                        child: (_selectedImage != null)
+                            ? Image.file(
+                          _selectedImage!,
+                          fit: BoxFit.cover,
+                          width: 120,
+                          height: 120,
+                        )
+                            : Image.network(
+                          profileViewModel.profileImageUrl ?? defaultAvatarUrl,
+                          fit: BoxFit.cover,
+                          width: 120,
+                          height: 120,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Image.network(
+                              defaultAvatarUrl,
+                              fit: BoxFit.cover,
+                              width: 120,
+                              height: 120,
+                            );
+                          },
+                        ),
+                      ),
                     ),
                     Positioned(
                       bottom: 4,
@@ -147,8 +168,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                validator: (value) =>
-                value == null || value.isEmpty ? 'Please enter your name' : null,
+                validator: (value) => value == null || value.isEmpty ? 'Please enter your name' : null,
               ),
               SizedBox(height: 16),
 
@@ -185,9 +205,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 readOnly: true,
                 onTap: () => _selectDate(context),
                 controller: TextEditingController(
-                    text: _selectedDate != null
-                        ? "${_selectedDate!.toLocal()}".split(' ')[0]
-                        : ''),
+                    text: _selectedDate != null ? "${_selectedDate!.toLocal()}".split(' ')[0] : ''),
                 decoration: InputDecoration(
                   labelText: 'Birthdate',
                   labelStyle: TextStyle(color: Color(0xFF333333)),
@@ -224,15 +242,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ElevatedButton(
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
+                    final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
                     await profileViewModel.updateUserProfile(
                       _nameController.text.trim(),
                       profileViewModel.userProfile?.bio ?? '',
                       _locationController.text.trim(),
                       gender: _selectedGender,
-                      age: _selectedDate != null
-                          ? _selectedDate!.toIso8601String()
-                          : null,
+                      age: _selectedDate != null ? _selectedDate!.toIso8601String() : null,
                     );
+
+                    await profileViewModel.fetchUserProfile(profileViewModel.userProfile!.id!);
+
                     Navigator.pop(context);
                   }
                 },
