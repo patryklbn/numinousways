@@ -17,26 +17,54 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
 
-  // Login function with custom error handling for email/password
+  // Email and password sign-in with navigation
   Future<void> _signInWithEmailAndPassword() async {
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      await _authService.signInWithEmailPassword(
+      // Attempt to sign in and retrieve the user
+      final user = await _authService.signInWithEmailPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
-      Navigator.pushReplacementNamed(context, '/onboarding');
+
+      if (user != null) {
+        // Pass both userId and loggedInUserId to ProfileScreen
+        Navigator.pushReplacementNamed(
+          context,
+          '/profile_screen',
+          arguments: {
+            'userId': user.uid,              // The user profile to view
+            'loggedInUserId': user.uid,       // Assuming loggedInUserId is the same as user.uid
+          },
+        );
+      } else {
+        DialogHelper.showErrorDialog(context, "User not found.");
+      }
     } catch (e) {
       DialogHelper.showErrorDialog(context, e.toString());
     }
   }
 
-  // Google Sign-In function
+  // Google Sign-In with navigation
   Future<void> _signInWithGoogle() async {
     try {
-      await _authService.signInWithGoogle();
-      Navigator.pushReplacementNamed(context, '/onboarding');
+      // Attempt to sign in with Google and retrieve the user
+      final user = await _authService.signInWithGoogle();
+
+      if (user != null) {
+        // Pass both userId and loggedInUserId to ProfileScreen
+        Navigator.pushReplacementNamed(
+          context,
+          '/profile_screen',
+          arguments: {
+            'userId': user.uid,              // The user profile to view
+            'loggedInUserId': user.uid,       // Assuming loggedInUserId is the same as user.uid
+          },
+        );
+      } else {
+        DialogHelper.showErrorDialog(context, "Google sign-in failed.");
+      }
     } catch (e) {
       DialogHelper.showErrorDialog(context, e.toString());
     }
@@ -66,8 +94,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24.0),
-
-                    // Email TextField
                     TextFormField(
                       controller: _emailController,
                       validator: Validators.validateEmail,
@@ -80,8 +106,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 16.0),
-
-                    // Password TextField
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
@@ -106,8 +130,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8.0),
-
-                    // Forgot Password Text
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
@@ -121,8 +143,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24.0),
-
-                    // Login Button
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -138,10 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 24.0),
-
-                    // Divider with "or login with" text
                     Row(
                       children: [
                         Expanded(
@@ -163,8 +180,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                     const SizedBox(height: 24.0),
-
-                    // Social Media Icons
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -172,9 +187,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           icon: Icon(Icons.email),
                           iconSize: 32.0,
                           color: Color(0xFF37474F),
-                          onPressed: _signInWithGoogle, // Call Google Sign-In
+                          onPressed: _signInWithGoogle,
                         ),
-                        // Additional icons can be added here for other providers
                       ],
                     ),
                     const SizedBox(height: 24.0),
@@ -183,8 +197,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-
-          // Register Now Text
           Padding(
             padding: const EdgeInsets.only(bottom: 24.0),
             child: Center(
