@@ -7,7 +7,12 @@ import 'screens/login/login_screen.dart';
 import 'screens/login/register_screen.dart';
 import 'screens/login/forgotpassword_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/profile/edit_profile_screen.dart';
+import 'screens/timeline/timeline_screen.dart';
 import 'viewmodels/profile_viewmodel.dart';
+import 'services/login_provider.dart';
+import 'widgets/app_drawer.dart';
+import 'screens/main_app_with_drawer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,6 +22,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+        ChangeNotifierProvider(create: (_) => LoginProvider()),
       ],
       child: const MyApp(),
     ),
@@ -45,36 +51,42 @@ class MyApp extends StatelessWidget {
       title: 'Your App Name',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Color(0xFFEFF3F7),
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.blue,
+          titleTextStyle: TextStyle(color: Colors.white, fontSize: 24),
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
       ),
-      home: const LoginScreen(), // Start with LoginScreen
+      home: Consumer<LoginProvider>(
+        builder: (context, loginProvider, child) {
+          if (loginProvider.isLoggedIn) {
+            print("Navigating to MainAppWithDrawer with userId: ${loginProvider.userId}");
+            return MainAppWithDrawer(userId: loginProvider.userId!);
+          } else {
+            print("Navigating to LoginScreen");
+            return LoginScreen();
+          }
+        },
+      ),
       onGenerateRoute: (settings) {
         if (settings.name == '/profile_screen') {
-          // Expect arguments as a map with both 'userId' and 'loggedInUserId'
-          final arguments = settings.arguments as Map<String, String>;
-          final userId = arguments['userId']!;
-          final loggedInUserId = arguments['loggedInUserId']!;
-
-          // Pass both arguments to ProfileScreen
+          final args = settings.arguments as Map<String, String>;
           return MaterialPageRoute(
             builder: (context) => ProfileScreen(
-              userId: userId,
-              loggedInUserId: loggedInUserId,
+              userId: args['userId']!,
+              loggedInUserId: args['loggedInUserId']!,
             ),
           );
         }
-        // Define other routes similarly
-        switch (settings.name) {
-          case '/onboarding':
-            return MaterialPageRoute(builder: (context) => OnboardingScreen());
-          case '/login':
-            return MaterialPageRoute(builder: (context) => LoginScreen());
-          case '/register':
-            return MaterialPageRoute(builder: (context) => RegisterScreen());
-          case '/forgot-password':
-            return MaterialPageRoute(builder: (context) => ForgotPasswordScreen());
-          default:
-            return null;
-        }
+        return null; // Default return for undefined routes
+      },
+      routes: {
+        '/onboarding': (context) => OnboardingScreen(),
+        '/register': (context) => RegisterScreen(),
+        '/forgot-password': (context) => ForgotPasswordScreen(),
+        '/timeline': (context) => TimelineScreen(),
+        '/edit_profile': (context) => EditProfileScreen(),
       },
     );
   }
