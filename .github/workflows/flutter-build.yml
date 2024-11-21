@@ -73,7 +73,7 @@ jobs:
 
       # Step 5: Build iOS IPA
       - name: Build iOS IPA
-        run: flutter build ipa --release
+        run: flutter build ipa --release --no-codesign
 
       # Step 6: Upload iOS artifact
       - name: Upload iOS artifact
