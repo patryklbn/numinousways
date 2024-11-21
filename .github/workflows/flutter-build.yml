@@ -11,20 +11,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 2: Set up Java 17
+      - name: Set up Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # Step 3: Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
+      # Step 4: Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
+      # Step 5: Build APK
       - name: Build APK
         run: flutter build apk --release
 
+      # Step 6: Upload build artifact
       - name: Upload Android artifact
         uses: actions/upload-artifact@v3
         with:
@@ -37,17 +49,21 @@ jobs:
     needs: build-android  # Ensures Android build runs first
 
     steps:
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Step 2: Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
 
+      # Step 3: Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
+      # Step 4: Set up CocoaPods
       - name: Set up CocoaPods
         run: |
           sudo gem install cocoapods
@@ -55,10 +71,11 @@ jobs:
           pod install
           cd ..
 
+      # Step 5: Build iOS IPA
       - name: Build iOS IPA
         run: flutter build ipa --release
 
-      - name: Upload iOS artifact
+      # Step 6: Upload iOS artifact
         uses: actions/upload-artifact@v3
         with:
           name: flutter-release-ipa
