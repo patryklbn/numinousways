@@ -23,4 +23,31 @@ class Validators {
     }
     return null;
   }
+  static String? validateUsername(String? username) {
+    if (username == null || username.isEmpty) {
+      return 'Please enter a username';
+    } else if (username.length < 3) {
+      return 'Username must be at least 3 characters';
+    } else if (username.length > 15) {
+      return 'Username cannot exceed 15 characters';
+    } else if (!RegExp(r'^[a-zA-Z0-9._]+$').hasMatch(username)) {
+      return 'Username can only contain letters, numbers, underscores, and periods';
+    }
+    return null;
+  }
+  static String? validateName(String? name) {
+    if (name == null || name.isEmpty) {
+      return 'Please enter your name';
+    } else if (name.length > 15) {
+      return 'Name cannot exceed 15 characters';
+    }
+    return null;
+  }
+
+  static String? validateLocation(String? location) {
+    if (location != null && location.isNotEmpty && location.length > 15) {
+      return 'Location cannot exceed 15 characters';
+    }
+    return null;
+  }
 }

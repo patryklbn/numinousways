@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'dart:math';
 import '../../viewmodels/profile_viewmodel.dart';
 import 'edit_profile_screen.dart';
+import '../../widgets/app_drawer.dart'; // Import the AppDrawer
 
 class ProfileScreen extends StatefulWidget {
   final String userId;
@@ -52,6 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.white),
       ),
+      drawer: AppDrawer(userId: widget.userId), // Include the drawer here
       body: Consumer<ProfileViewModel>(
         builder: (context, profileViewModel, child) {
           if (profileViewModel.isLoading) {
@@ -71,8 +73,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 70,
-                    backgroundColor: Colors.white,
-                    child: CircleAvatar(
+                    backgroundColor: Color(0xFFBA8FDB),
+
+                child: CircleAvatar(
                       radius: 65,
                       backgroundColor: Colors.grey[200],
                       child: ClipOval(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/profile_viewmodel.dart';
+import '../../utils/validators.dart';
 
 class EditProfileScreen extends StatefulWidget {
   @override
@@ -94,9 +95,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       backgroundColor: Color(0xFFF5F5F5),
       appBar: AppBar(
         title: Text('Edit Profile'),
-        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         elevation: 0,
-        iconTheme: IconThemeData(color: Color(0xFF333333)),
+        iconTheme: IconThemeData(color: Colors.white),
       ),
       body: profileViewModel.isLoading
           ? Center(child: CircularProgressIndicator())
@@ -110,30 +119,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Stack(
                   alignment: Alignment.bottomRight,
                   children: [
+                    // External circle avatar with color 0xFFAD3D6F
                     CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.white,
-                      child: ClipOval(
-                        child: (_selectedImage != null)
-                            ? Image.file(
-                          _selectedImage!,
-                          fit: BoxFit.cover,
-                          width: 120,
-                          height: 120,
-                        )
-                            : Image.network(
-                          profileViewModel.profileImageUrl ?? defaultAvatarUrl,
-                          fit: BoxFit.cover,
-                          width: 120,
-                          height: 120,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Image.network(
-                              defaultAvatarUrl,
-                              fit: BoxFit.cover,
-                              width: 120,
-                              height: 120,
-                            );
-                          },
+                      radius: 65,
+                      backgroundColor: Color(0xFFBA8FDB),
+                      child: CircleAvatar(
+                        radius: 60,
+                        backgroundColor: Colors.white,
+                        child: ClipOval(
+                          child: (_selectedImage != null)
+                              ? Image.file(
+                            _selectedImage!,
+                            fit: BoxFit.cover,
+                            width: 120,
+                            height: 120,
+                          )
+                              : Image.network(
+                            profileViewModel.profileImageUrl ?? defaultAvatarUrl,
+                            fit: BoxFit.cover,
+                            width: 120,
+                            height: 120,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Image.network(
+                                defaultAvatarUrl,
+                                fit: BoxFit.cover,
+                                width: 120,
+                                height: 120,
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
@@ -168,7 +182,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                validator: (value) => value == null || value.isEmpty ? 'Please enter your name' : null,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  return Validators.validateName(value);
+                },
               ),
               SizedBox(height: 16),
 
@@ -235,6 +254,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                validator: Validators.validateLocation,
               ),
               SizedBox(height: 20),
 
