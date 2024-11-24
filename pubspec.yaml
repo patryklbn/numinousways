@@ -49,6 +49,8 @@ dependencies:
   path_provider: ^2.1.5
   cached_network_image: ^3.4.1
   sqflite: ^2.4.1
+  timeago: ^3.7.0
+  font_awesome_flutter: ^10.8.0
 
 dev_dependencies:
   flutter_test:
