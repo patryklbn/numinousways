@@ -7,9 +7,7 @@ import '../services/login_provider.dart';
 import '../viewmodels/profile_viewmodel.dart';
 
 class AppDrawer extends StatefulWidget {
-  final String userId;
-
-  const AppDrawer({Key? key, required this.userId}) : super(key: key);
+  const AppDrawer({Key? key}) : super(key: key);
 
   @override
   _AppDrawerState createState() => _AppDrawerState();
@@ -21,118 +19,99 @@ class _AppDrawerState extends State<AppDrawer> {
   @override
   void initState() {
     super.initState();
-    profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (profileViewModel.userProfile == null ||
-          profileViewModel.userProfile?.id != widget.userId) {
-        profileViewModel.fetchUserProfile(widget.userId);
+      final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+      profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+      if (loginProvider.isLoggedIn) {
+        profileViewModel.fetchUserProfile(loginProvider.userId!);
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final loginProvider = Provider.of<LoginProvider>(context);
+    final profileViewModel = Provider.of<ProfileViewModel>(context);
+    final String loggedInUserId = loginProvider.userId ?? '';
+
+    final isLoading = profileViewModel.isLoading;
+    final userProfile = profileViewModel.userProfile;
     final userEmail = FirebaseAuth.instance.currentUser?.email ?? 'user@example.com';
 
-    return Consumer<ProfileViewModel>(
-      builder: (context, profileViewModel, child) {
-        final userProfile = profileViewModel.userProfile;
-        final isLoading = profileViewModel.isLoading;
+    const String defaultAvatarUrl =
+        'https://firebasestorage.googleapis.com/v0/b/yourapp.appspot.com/o/profile_images%2Fdefault_avatar.png?alt=media';
 
-        final String defaultAvatarUrl =
-            'https://firebasestorage.googleapis.com/v0/b/numinousway.firebasestorage.app/o/profile_images%2Fdefault_avatar.png?alt=media&token=d6afd74a-433c-4713-b8fc-73ffaa18d49c';
-
-        return Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              UserAccountsDrawerHeader(
-                accountName: isLoading
-                    ? Text('Loading...')
-                    : Text(
-                  userProfile?.name ?? 'User Name',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                accountEmail: Text(userEmail),
-                currentAccountPicture: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFAD3D6F), // External circle color
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(3.0), // Border thickness
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white, // Inner circle color
-                      ),
-                      child: ClipOval(
-                        child: userProfile?.profileImageUrl != null
-                            ? Image.network(
-                          userProfile!.profileImageUrl!,
-                          fit: BoxFit.cover,
-                          width: 74,
-                          height: 74,
-                          errorBuilder: (context, error, stackTrace) {
-                            // Fallback to local asset on error
-                            return Image.asset(
-                              'assets/default_avatar.png',
-                              fit: BoxFit.cover,
-                              width: 74,
-                              height: 74,
-                            );
-                          },
-                        )
-                            : Image.asset(
-                          'assets/default_avatar.png',
-                          fit: BoxFit.cover,
-                          width: 74,
-                          height: 74,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          UserAccountsDrawerHeader(
+            accountName: isLoading
+                ? const Text('Loading...')
+                : Text(
+              userProfile?.name ?? 'User Name',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            accountEmail: Text(userEmail),
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: ClipOval(
+                child: Image.network(
+                  userProfile?.profileImageUrl ?? defaultAvatarUrl,
+                  fit: BoxFit.cover,
+                  width: 74,
+                  height: 74,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Image.asset(
+                      'assets/default_avatar.png',
+                      fit: BoxFit.cover,
+                      width: 74,
+                      height: 74,
+                    );
+                  },
                 ),
               ),
-              ListTile(
-                leading: Icon(Icons.home),
-                title: Text('Timeline'),
-                onTap: () {
-                  Navigator.pushNamed(context, '/timeline');
-                },
+            ),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              ListTile(
-                leading: Icon(Icons.person),
-                title: Text('Profile'),
-                onTap: () {
-                  Navigator.pushNamed(context, '/profile_screen', arguments: {
-                    'userId': widget.userId,
-                    'loggedInUserId': widget.userId,
-                  });
-                },
-              ),
-              Divider(),
-              ListTile(
-                leading: Icon(Icons.logout),
-                title: Text('Log Out'),
-                onTap: () {
-                  Provider.of<LoginProvider>(context, listen: false).logout();
-                  Navigator.pushReplacementNamed(context, '/login');
-                },
-              ),
-            ],
+            ),
           ),
-        );
-      },
+          ListTile(
+            leading: const Icon(Icons.home),
+            title: const Text('Timeline'),
+            onTap: () {
+              Navigator.pushNamed(context, '/timeline');
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.person),
+            title: const Text('Profile'),
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                '/profile_screen',
+                arguments: {
+                  'userId': loggedInUserId,
+                  'loggedInUserId': loggedInUserId,
+                },
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.logout),
+            title: const Text('Log Out'),
+            onTap: () {
+              loginProvider.logout();
+              Navigator.pushReplacementNamed(context, '/login');
+            },
+          ),
+        ],
+      ),
     );
   }
 }
