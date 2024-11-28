@@ -1,10 +1,12 @@
-// timeline_screen.dart
+// lib/screens/timeline/timeline_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/timeline_service.dart';
 import '../../models/post.dart';
 import '../../services/login_provider.dart';
 import '../../widgets/timeline/post_widget.dart';
+import '../../widgets/app_drawer.dart'; // Import AppDrawer
 import 'create_post_screen.dart';
 
 class TimelineScreen extends StatelessWidget {
@@ -47,6 +49,7 @@ class TimelineScreen extends StatelessWidget {
           ),
         ],
       ),
+      drawer: const AppDrawer(), // Include the drawer in the Scaffold
       body: StreamBuilder<List<Post>>(
         stream: timelineService.getPosts(currentUserId), // Pass currentUserId here
         builder: (context, snapshot) {
