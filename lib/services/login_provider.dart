@@ -8,29 +8,41 @@ class LoginProvider extends ChangeNotifier {
   bool get isLoggedIn => _isLoggedIn;
   String? get userId => _userId;
 
+  LoginProvider() {
+    // Listen to authentication state changes
+    FirebaseAuth.instance.authStateChanges().listen((User? user) {
+      if (user == null) {
+        _isLoggedIn = false;
+        _userId = null;
+      } else {
+        _isLoggedIn = true;
+        _userId = user.uid;
+      }
+      notifyListeners(); // Notify listeners whenever the state changes
+    });
+  }
+
   Future<void> login(String email, String password) async {
     try {
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-
-      // Set the user ID to the currently logged-in user's ID
-      _userId = userCredential.user?.uid;
-      _isLoggedIn = true;
-      notifyListeners();
-      print("Logged in with userId: $_userId");  // Debug message
-
+      // The authStateChanges listener will handle updating the state
+      print("Logged in");
     } catch (e) {
-      // Handle login errors (e.g., show error messages)
       print("Login error: $e");
+      rethrow; // Rethrow the error so the caller can handle it
     }
   }
 
-  void logout() {
-    _isLoggedIn = false;
-    _userId = null; // Clear the user ID on logout
-    FirebaseAuth.instance.signOut();
-    notifyListeners();
+  Future<void> logout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      // The authStateChanges listener will handle updating the state
+    } catch (e) {
+      print("Logout error: $e");
+      rethrow; // Rethrow the error so the caller can handle it
+    }
   }
 }

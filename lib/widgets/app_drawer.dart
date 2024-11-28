@@ -7,9 +7,7 @@ import '../services/login_provider.dart';
 import '../viewmodels/profile_viewmodel.dart';
 
 class AppDrawer extends StatefulWidget {
-  final String userId;
-
-  const AppDrawer({Key? key, required this.userId}) : super(key: key);
+  const AppDrawer({Key? key}) : super(key: key);
 
   @override
   _AppDrawerState createState() => _AppDrawerState();
@@ -21,118 +19,121 @@ class _AppDrawerState extends State<AppDrawer> {
   @override
   void initState() {
     super.initState();
-    profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (profileViewModel.userProfile == null ||
-          profileViewModel.userProfile?.id != widget.userId) {
-        profileViewModel.fetchUserProfile(widget.userId);
+      final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+      profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+      if (loginProvider.isLoggedIn) {
+        profileViewModel.fetchUserProfile(loginProvider.userId!);
       }
     });
   }
 
+  Future<void> _logout(BuildContext context) async {
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+
+    // Perform logout
+    await loginProvider.logout();
+
+    // Navigate to Onboarding Screen and clear navigation stack
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/onboarding',
+          (Route<dynamic> route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final userEmail = FirebaseAuth.instance.currentUser?.email ?? 'user@example.com';
+    final loginProvider = Provider.of<LoginProvider>(context);
+    final profileViewModel = Provider.of<ProfileViewModel>(context);
 
-    return Consumer<ProfileViewModel>(
-      builder: (context, profileViewModel, child) {
-        final userProfile = profileViewModel.userProfile;
-        final isLoading = profileViewModel.isLoading;
+    final bool isLoading = profileViewModel.isLoading;
+    final userProfile = profileViewModel.userProfile;
+    final String loggedInUserId = loginProvider.userId ?? '';
+    final String userEmail =
+        FirebaseAuth.instance.currentUser?.email ?? 'user@example.com';
 
-        final String defaultAvatarUrl =
-            'https://firebasestorage.googleapis.com/v0/b/numinousway.firebasestorage.app/o/profile_images%2Fdefault_avatar.png?alt=media&token=d6afd74a-433c-4713-b8fc-73ffaa18d49c';
+    const String defaultAvatarUrl =
+        'https://firebasestorage.googleapis.com/v0/b/yourapp.appspot.com/o/profile_images%2Fdefault_avatar.png?alt=media';
 
-        return Drawer(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              UserAccountsDrawerHeader(
-                accountName: isLoading
-                    ? Text('Loading...')
-                    : Text(
-                  userProfile?.name ?? 'User Name',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                accountEmail: Text(userEmail),
-                currentAccountPicture: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFFAD3D6F), // External circle color
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(3.0), // Border thickness
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white, // Inner circle color
-                      ),
-                      child: ClipOval(
-                        child: userProfile?.profileImageUrl != null
-                            ? Image.network(
-                          userProfile!.profileImageUrl!,
-                          fit: BoxFit.cover,
-                          width: 74,
-                          height: 74,
-                          errorBuilder: (context, error, stackTrace) {
-                            // Fallback to local asset on error
-                            return Image.asset(
-                              'assets/default_avatar.png',
-                              fit: BoxFit.cover,
-                              width: 74,
-                              height: 74,
-                            );
-                          },
-                        )
-                            : Image.asset(
-                          'assets/default_avatar.png',
-                          fit: BoxFit.cover,
-                          width: 74,
-                          height: 74,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+    return Drawer(
+      child: Container(
+        color: Colors.white, // Drawer background color
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            // Header
+            UserAccountsDrawerHeader(
+              accountName: isLoading
+                  ? const Text('Loading...')
+                  : Text(
+                userProfile?.name ?? 'User Name',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              accountEmail: Text(userEmail),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: ClipOval(
+                  child: Image.network(
+                    userProfile?.profileImageUrl ?? defaultAvatarUrl,
+                    fit: BoxFit.cover,
+                    width: 74,
+                    height: 74,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/default_avatar.png',
+                        fit: BoxFit.cover,
+                        width: 74,
+                        height: 74,
+                      );
+                    },
                   ),
                 ),
               ),
-              ListTile(
-                leading: Icon(Icons.home),
-                title: Text('Timeline'),
-                onTap: () {
-                  Navigator.pushNamed(context, '/timeline');
-                },
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
-              ListTile(
-                leading: Icon(Icons.person),
-                title: Text('Profile'),
-                onTap: () {
-                  Navigator.pushNamed(context, '/profile_screen', arguments: {
-                    'userId': widget.userId,
-                    'loggedInUserId': widget.userId,
-                  });
-                },
-              ),
-              Divider(),
-              ListTile(
-                leading: Icon(Icons.logout),
-                title: Text('Log Out'),
-                onTap: () {
-                  Provider.of<LoginProvider>(context, listen: false).logout();
-                  Navigator.pushReplacementNamed(context, '/login');
-                },
-              ),
-            ],
-          ),
-        );
-      },
+            ),
+            // Menu Items
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Timeline'),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.pushNamed(context, '/timeline'); // Navigate to Timeline
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.pushNamed(
+                  context,
+                  '/profile_screen',
+                  arguments: {
+                    'userId': loggedInUserId,
+                    'loggedInUserId': loggedInUserId,
+                  },
+                ); // Navigate to Profile with arguments
+              },
+            ),
+            const Divider(), // Divider between menu items
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Log Out'),
+              onTap: () async {
+                Navigator.pop(context); // Close drawer
+                await _logout(context); // Perform logout
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

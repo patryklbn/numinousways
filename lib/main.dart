@@ -47,47 +47,56 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Your App Name',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Color(0xFFEFF3F7),
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.blue,
-          titleTextStyle: TextStyle(color: Colors.white, fontSize: 24),
-          iconTheme: IconThemeData(color: Colors.white),
-        ),
-      ),
-      home: Consumer<LoginProvider>(
-        builder: (context, loginProvider, child) {
-          if (loginProvider.isLoggedIn) {
-            print("Navigating to MainAppWithDrawer with userId: ${loginProvider.userId}");
-            return MainAppWithDrawer(userId: loginProvider.userId!);
-          } else {
-            print("Navigating to LoginScreen");
-            return LoginScreen();
-          }
-        },
-      ),
-      onGenerateRoute: (settings) {
-        if (settings.name == '/profile_screen') {
-          final args = settings.arguments as Map<String, String>;
-          return MaterialPageRoute(
-            builder: (context) => ProfileScreen(
-              userId: args['userId']!,
-              loggedInUserId: args['loggedInUserId']!,
+    return MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+          ChangeNotifierProvider(create: (_) => LoginProvider()),
+        ],
+        child: MaterialApp(
+          title: 'Your App Name',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+            scaffoldBackgroundColor: Color(0xFFEFF3F7),
+            appBarTheme: AppBarTheme(
+              backgroundColor: Colors.blue,
+              titleTextStyle: TextStyle(color: Colors.white, fontSize: 24),
+              iconTheme: IconThemeData(color: Colors.white),
             ),
-          );
-        }
-        return null; // Default return for undefined routes
-      },
-      routes: {
-        '/onboarding': (context) => OnboardingScreen(),
-        '/register': (context) => RegisterScreen(),
-        '/forgot-password': (context) => ForgotPasswordScreen(),
-        '/timeline': (context) => TimelineScreen(),
-        '/edit_profile': (context) => EditProfileScreen(),
-      },
+          ),
+          home: Consumer<LoginProvider>(
+            builder: (context, loginProvider, child) {
+              if (loginProvider.isLoggedIn) {
+                print(
+                    "Navigating to TimelineScreen with userId: ${loginProvider
+                        .userId}");
+                return TimelineScreen(); // Do not pass userId
+              } else {
+                print("Navigating to LoginScreen");
+                return LoginScreen();
+              }
+            },
+          ),
+          onGenerateRoute: (settings) {
+            if (settings.name == '/profile_screen') {
+              final args = settings.arguments as Map<String, String>;
+              return MaterialPageRoute(
+                builder: (context) =>
+                    ProfileScreen(
+                      userId: args['userId']!,
+                      loggedInUserId: args['loggedInUserId']!,
+                    ),
+              );
+            }
+            return null; // Default return for undefined routes
+          },
+          routes: {
+            '/onboarding': (context) => OnboardingScreen(),
+            '/register': (context) => RegisterScreen(),
+            '/forgot-password': (context) => ForgotPasswordScreen(),
+            '/timeline': (context) => TimelineScreen(),
+            '/edit_profile': (context) => EditProfileScreen(),
+          },
+        )
     );
   }
 }

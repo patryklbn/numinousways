@@ -53,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.white),
       ),
-      drawer: AppDrawer(userId: widget.userId), // Include the drawer here
+      drawer: AppDrawer(), // Include the drawer here
       body: Consumer<ProfileViewModel>(
         builder: (context, profileViewModel, child) {
           if (profileViewModel.isLoading) {
