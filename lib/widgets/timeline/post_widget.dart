@@ -33,6 +33,7 @@ class PostWidget extends StatelessWidget {
       builder: (context, snapshot) {
         UserProfile? user = snapshot.data;
         return Card(
+          color: Colors.white, // Set the background color to pure white
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
           elevation: 4,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
