@@ -14,12 +14,11 @@ class LoginProvider extends ChangeNotifier {
       if (user == null) {
         _isLoggedIn = false;
         _userId = null;
-        notifyListeners();
       } else {
         _isLoggedIn = true;
         _userId = user.uid;
-        notifyListeners();
       }
+      notifyListeners(); // Notify listeners whenever the state changes
     });
   }
 
@@ -33,11 +32,17 @@ class LoginProvider extends ChangeNotifier {
       print("Logged in");
     } catch (e) {
       print("Login error: $e");
+      rethrow; // Rethrow the error so the caller can handle it
     }
   }
 
-  void logout() {
-    FirebaseAuth.instance.signOut();
-    // The authStateChanges listener will handle updating the state
+  Future<void> logout() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      // The authStateChanges listener will handle updating the state
+    } catch (e) {
+      print("Logout error: $e");
+      rethrow; // Rethrow the error so the caller can handle it
+    }
   }
 }

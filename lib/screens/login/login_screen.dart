@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Pass both userId and loggedInUserId to ProfileScreen
         Navigator.pushReplacementNamed(
           context,
-          '/profile_screen',
+          '/timeline',
           arguments: {
             'userId': user.uid,              // The user profile to view
             'loggedInUserId': user.uid,       // Assuming loggedInUserId is the same as user.uid
@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // Pass both userId and loggedInUserId to ProfileScreen
         Navigator.pushReplacementNamed(
           context,
-          '/profile_screen',
+          '/timeline',
           arguments: {
             'userId': user.uid,              // The user profile to view
             'loggedInUserId': user.uid,       // Assuming loggedInUserId is the same as user.uid
