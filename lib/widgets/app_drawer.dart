@@ -28,89 +28,111 @@ class _AppDrawerState extends State<AppDrawer> {
     });
   }
 
+  Future<void> _logout(BuildContext context) async {
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+
+    // Perform logout
+    await loginProvider.logout();
+
+    // Navigate to Onboarding Screen and clear navigation stack
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/onboarding',
+          (Route<dynamic> route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loginProvider = Provider.of<LoginProvider>(context);
     final profileViewModel = Provider.of<ProfileViewModel>(context);
-    final String loggedInUserId = loginProvider.userId ?? '';
 
-    final isLoading = profileViewModel.isLoading;
+    final bool isLoading = profileViewModel.isLoading;
     final userProfile = profileViewModel.userProfile;
-    final userEmail = FirebaseAuth.instance.currentUser?.email ?? 'user@example.com';
+    final String loggedInUserId = loginProvider.userId ?? '';
+    final String userEmail =
+        FirebaseAuth.instance.currentUser?.email ?? 'user@example.com';
 
     const String defaultAvatarUrl =
         'https://firebasestorage.googleapis.com/v0/b/yourapp.appspot.com/o/profile_images%2Fdefault_avatar.png?alt=media';
 
     return Drawer(
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          UserAccountsDrawerHeader(
-            accountName: isLoading
-                ? const Text('Loading...')
-                : Text(
-              userProfile?.name ?? 'User Name',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            accountEmail: Text(userEmail),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: ClipOval(
-                child: Image.network(
-                  userProfile?.profileImageUrl ?? defaultAvatarUrl,
-                  fit: BoxFit.cover,
-                  width: 74,
-                  height: 74,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Image.asset(
-                      'assets/default_avatar.png',
-                      fit: BoxFit.cover,
-                      width: 74,
-                      height: 74,
-                    );
-                  },
+      child: Container(
+        color: Colors.white, // Drawer background color
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            // Header
+            UserAccountsDrawerHeader(
+              accountName: isLoading
+                  ? const Text('Loading...')
+                  : Text(
+                userProfile?.name ?? 'User Name',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              accountEmail: Text(userEmail),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: ClipOval(
+                  child: Image.network(
+                    userProfile?.profileImageUrl ?? defaultAvatarUrl,
+                    fit: BoxFit.cover,
+                    width: 74,
+                    height: 74,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Image.asset(
+                        'assets/default_avatar.png',
+                        fit: BoxFit.cover,
+                        width: 74,
+                        height: 74,
+                      );
+                    },
+                  ),
+                ),
+              ),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
             ),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+            // Menu Items
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Timeline'),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.pushNamed(context, '/timeline'); // Navigate to Timeline
+              },
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.home),
-            title: const Text('Timeline'),
-            onTap: () {
-              Navigator.pushNamed(context, '/timeline');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Profile'),
-            onTap: () {
-              Navigator.pushNamed(
-                context,
-                '/profile_screen',
-                arguments: {
-                  'userId': loggedInUserId,
-                  'loggedInUserId': loggedInUserId,
-                },
-              );
-            },
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Log Out'),
-            onTap: () {
-              loginProvider.logout();
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-          ),
-        ],
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.pushNamed(
+                  context,
+                  '/profile_screen',
+                  arguments: {
+                    'userId': loggedInUserId,
+                    'loggedInUserId': loggedInUserId,
+                  },
+                ); // Navigate to Profile with arguments
+              },
+            ),
+            const Divider(), // Divider between menu items
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text('Log Out'),
+              onTap: () async {
+                Navigator.pop(context); // Close drawer
+                await _logout(context); // Perform logout
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -67,9 +67,9 @@ class MyApp extends StatelessWidget {
             builder: (context, loginProvider, child) {
               if (loginProvider.isLoggedIn) {
                 print(
-                    "Navigating to MainAppWithDrawer with userId: ${loginProvider
+                    "Navigating to TimelineScreen with userId: ${loginProvider
                         .userId}");
-                return MainAppWithDrawer(); // Do not pass userId
+                return TimelineScreen(); // Do not pass userId
               } else {
                 print("Navigating to LoginScreen");
                 return LoginScreen();
