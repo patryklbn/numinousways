@@ -83,7 +83,7 @@ class _CommentWidgetState extends State<CommentWidget> {
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.grey[200], // Light gray background
+            color: const Color(0xFFEEEEEE),
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
@@ -169,23 +169,25 @@ class _CommentWidgetState extends State<CommentWidget> {
                     const SizedBox(height: 8),
                     // Like Button and Count - Aligned to Left
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.start, // Ensure alignment to left
+                      mainAxisAlignment: MainAxisAlignment.start, // Align to the left
                       crossAxisAlignment: CrossAxisAlignment.center, // Vertically center the items
                       children: [
-                        IconButton(
-                          icon: Icon(
-                            isLiked ? Icons.favorite : Icons.favorite_border,
-                            color: isLiked ? Colors.red : Colors.grey,
-                            size: 20,
+                        GestureDetector(
+                          onTap: _toggleLike,
+                          child: Row(
+                            children: [
+                              Icon(
+                                isLiked ? Icons.favorite : Icons.favorite_border,
+                                color: isLiked ? Colors.red : Colors.grey,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 4), // Small space between icon and count
+                              Text(
+                                '$likesCount',
+                                style: const TextStyle(fontSize: 14, color: Colors.grey),
+                              ),
+                            ],
                           ),
-                          onPressed: _toggleLike,
-                          padding: EdgeInsets.zero, // Remove default padding
-                          constraints: const BoxConstraints(), // Remove default constraints
-                        ),
-                        const SizedBox(width: 4), // Small space between icon and count
-                        Text(
-                          '$likesCount',
-                          style: const TextStyle(fontSize: 14, color: Colors.grey),
                         ),
                         // Optional: Add more actions here (e.g., reply, share)
                       ],
