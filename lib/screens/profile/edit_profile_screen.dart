@@ -122,7 +122,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     // External circle avatar with color 0xFFAD3D6F
                     CircleAvatar(
                       radius: 65,
-                      backgroundColor: Color(0xFFBA8FDB),
+                      backgroundColor: Color(0xFFA785D3),
                       child: CircleAvatar(
                         radius: 60,
                         backgroundColor: Colors.white,
