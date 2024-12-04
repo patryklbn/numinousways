@@ -1,4 +1,3 @@
-// post_widget.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/timeline_service.dart';
@@ -21,6 +20,20 @@ class PostWidget extends StatelessWidget {
   Future<UserProfile?> _fetchUserProfile(String userId) async {
     ProfileService profileService = ProfileService();
     return await profileService.getUserProfile(userId);
+  }
+
+  void _deletePost(BuildContext context, String postId) async {
+    final TimelineService timelineService = TimelineService();
+    try {
+      await timelineService.deletePost(postId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post deleted successfully.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting post: $e')),
+      );
+    }
   }
 
   @override
@@ -101,6 +114,34 @@ class PostWidget extends StatelessWidget {
                   style: const TextStyle(color: Colors.grey, fontSize: 14),
                 ),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                trailing: currentUserId == post.userId
+                    ? PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  color: Colors.white, // Set background to pure white
+                  onSelected: (String value) {
+                    if (value == 'delete') {
+                      _deletePost(context, post.id);
+                    }
+                  },
+                  itemBuilder: (BuildContext context) {
+                    return [
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.delete,
+                              color: Colors.red, // Red trash icon
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Delete Post'),
+                          ],
+                        ),
+                      ),
+                    ];
+                  },
+                )
+                    : null,
               ),
               // Post Content
               if (post.content.isNotEmpty)
