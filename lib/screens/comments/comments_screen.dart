@@ -1,4 +1,3 @@
-// comments_screen.dart
 import 'package:flutter/material.dart';
 import '../../services/timeline_service.dart';
 import '../../models/comment.dart';
@@ -74,7 +73,13 @@ class _CommentsScreenState extends State<CommentsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Comments"),
+        title: const Text(
+          "Comments",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -162,7 +167,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
       bottomNavigationBar: _isSubmitting
           ? const LinearProgressIndicator()
           : Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
         child: Row(
           children: [
             Expanded(
@@ -170,10 +175,13 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 controller: _controller,
                 decoration: const InputDecoration(
                   hintText: 'Add a comment...',
-                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(15)),
+                  ),
                 ),
                 minLines: 1,
-                maxLines: 5,
+                maxLines: 3,
               ),
             ),
             IconButton(

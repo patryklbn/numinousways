@@ -1,4 +1,3 @@
-// comment_widget.dart
 import 'package:flutter/material.dart';
 import '../../models/comment.dart';
 import '../../models/user_profile.dart';
@@ -97,7 +96,7 @@ class _CommentWidgetState extends State<CommentWidget> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Avatar
+              // User Avatar with Circular Border
               GestureDetector(
                 onTap: () {
                   // Navigate to user's profile
@@ -112,14 +111,17 @@ class _CommentWidgetState extends State<CommentWidget> {
                   );
                 },
                 child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: const Color(0xFFBA8FDB),
-                  backgroundImage: user?.profileImageUrl != null
-                      ? NetworkImage(user!.profileImageUrl!)
-                      : null,
-                  child: user?.profileImageUrl == null
-                      ? const Icon(Icons.person, color: Colors.white, size: 20)
-                      : null,
+                  radius: 24, // Outer circle
+                  backgroundColor: const Color(0xFF4DB6AC),
+                  child: CircleAvatar(
+                    radius: 22, // Inner circle with the actual image
+                    backgroundImage: user?.profileImageUrl != null
+                        ? NetworkImage(user!.profileImageUrl!)
+                        : null,
+                    child: user?.profileImageUrl == null
+                        ? const Icon(Icons.person, color: Colors.white, size: 24)
+                        : null,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
