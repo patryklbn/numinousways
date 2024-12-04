@@ -84,4 +84,9 @@ class TimelineService {
         .map((doc) => Comment.fromDocument(doc))
         .toList());
   }
+// Get post by its ID
+  Future<Post> getPostById(String postId, String currentUserId) async {
+    DocumentSnapshot doc = await _firestore.collection('posts').doc(postId).get();
+    return Post.fromDocument(doc, currentUserId: currentUserId);
+  }
 }
