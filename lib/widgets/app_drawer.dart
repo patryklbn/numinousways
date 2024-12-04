@@ -1,5 +1,3 @@
-// lib/widgets/app_drawer.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -72,22 +70,16 @@ class _AppDrawerState extends State<AppDrawer> {
               ),
               accountEmail: Text(userEmail),
               currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: ClipOval(
-                  child: Image.network(
-                    userProfile?.profileImageUrl ?? defaultAvatarUrl,
-                    fit: BoxFit.cover,
-                    width: 74,
-                    height: 74,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Image.asset(
-                        'assets/default_avatar.png',
-                        fit: BoxFit.cover,
-                        width: 74,
-                        height: 74,
-                      );
-                    },
-                  ),
+                radius: 36, // Outer circle
+                  backgroundColor: const Color(0xFFA785D3),
+                 // Neutral white color for the border
+                child: CircleAvatar(
+                  radius: 34, // Inner circle with the actual image
+                  backgroundColor: Colors.grey[200], // Fallback color
+                  backgroundImage: NetworkImage(userProfile?.profileImageUrl ?? defaultAvatarUrl),
+                  child: userProfile?.profileImageUrl == null
+                      ? const Icon(Icons.person, size: 36, color: Colors.grey)
+                      : null,
                 ),
               ),
               decoration: const BoxDecoration(
