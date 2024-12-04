@@ -9,8 +9,21 @@ import '../../widgets/timeline/post_widget.dart';
 import '../../widgets/app_drawer.dart'; // Import AppDrawer
 import 'create_post_screen.dart';
 
-class TimelineScreen extends StatelessWidget {
+class TimelineScreen extends StatefulWidget {
   const TimelineScreen({Key? key}) : super(key: key);
+
+  @override
+  State<TimelineScreen> createState() => _TimelineScreenState();
+}
+
+class _TimelineScreenState extends State<TimelineScreen> {
+  final ValueNotifier<bool> isCommentsScreenOpen = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    isCommentsScreenOpen.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +94,10 @@ class TimelineScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: posts.length,
               itemBuilder: (context, index) {
-                return PostWidget(post: posts[index]);
+                return PostWidget(
+                  post: posts[index],
+                  isCommentsScreenOpen: isCommentsScreenOpen, // Pass the ValueNotifier here
+                );
               },
             ),
           );

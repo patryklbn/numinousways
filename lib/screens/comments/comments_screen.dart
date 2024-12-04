@@ -22,6 +22,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   final TextEditingController _controller = TextEditingController();
   bool _isSubmitting = false;
   final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<bool> isCommentsScreenOpen = ValueNotifier<bool>(true); // Default to true since the screen is already open
 
   // Method to add a comment
   void _addComment(String currentUserId) async {
@@ -61,6 +62,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   void dispose() {
     _controller.dispose();
     _scrollController.dispose(); // Dispose the ScrollController
+    isCommentsScreenOpen.dispose(); // Dispose ValueNotifier
     super.dispose();
   }
 
@@ -133,13 +135,16 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 PostWidget(
                   key: ValueKey(post.id),
                   post: post,
+                  isCommentsScreenOpen: isCommentsScreenOpen, // Pass ValueNotifier here
                 ),
                 const Divider(height: 1),
-                ...comments.map((comment) => CommentWidget(
-                  key: ValueKey(comment.id),
-                  postId: widget.postId,
-                  comment: comment,
-                )),
+                ...comments.map(
+                      (comment) => CommentWidget(
+                    key: ValueKey(comment.id),
+                    postId: widget.postId,
+                    comment: comment,
+                  ),
+                ),
               ];
 
               return ListView.builder(

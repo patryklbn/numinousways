@@ -14,8 +14,9 @@ import '../../services/login_provider.dart';
 
 class PostWidget extends StatelessWidget {
   final Post post;
+  final ValueNotifier<bool> isCommentsScreenOpen;
 
-  const PostWidget({Key? key, required this.post}) : super(key: key);
+  const PostWidget({Key? key, required this.post, required this.isCommentsScreenOpen}) : super(key: key);
 
   Future<UserProfile?> _fetchUserProfile(String userId) async {
     ProfileService profileService = ProfileService();
@@ -163,30 +164,43 @@ class PostWidget extends StatelessWidget {
                     ),
                     const SizedBox(width: 24),
                     // Comment Button
-                    GestureDetector(
-                      onTap: () {
-                        // Navigate to comments screen
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CommentsScreen(postId: post.id),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: isCommentsScreenOpen,
+                      builder: (context, isDisabled, _) {
+                        return GestureDetector(
+                          onTap: isDisabled
+                              ? null
+                              : () {
+                            // Navigate to comments screen
+                            isCommentsScreenOpen.value = true; // Disable button while navigating
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CommentsScreen(postId: post.id),
+                              ),
+                            ).then((_) {
+                              // Reactivate button when coming back
+                              isCommentsScreenOpen.value = false;
+                            });
+                          },
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.comment_outlined,
+                                color: isDisabled ? Colors.grey[400] : Colors.grey,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${post.commentsCount}',
+                                style: TextStyle(
+                                  color: isDisabled ? Colors.grey[400] : Colors.grey,
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       },
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.comment_outlined,
-                            color: Colors.grey,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${post.commentsCount}',
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                        ],
-                      ),
                     ),
                   ],
                 ),
