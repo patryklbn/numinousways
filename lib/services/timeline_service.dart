@@ -1,4 +1,3 @@
-// timeline_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post.dart';
 import '../models/comment.dart';
@@ -64,6 +63,26 @@ class TimelineService {
   Future<Post> getPostById(String postId, String currentUserId) async {
     DocumentSnapshot doc = await _firestore.collection('posts').doc(postId).get();
     return Post.fromDocument(doc, currentUserId: currentUserId);
+  }
+
+  /// Delete a post
+  Future<void> deletePost(String postId) async {
+    DocumentReference postRef = _firestore.collection('posts').doc(postId);
+
+    // Delete the post document and its comments
+    WriteBatch batch = _firestore.batch();
+
+    // Delete all comments associated with this post
+    QuerySnapshot commentsSnapshot = await postRef.collection('comments').get();
+    for (QueryDocumentSnapshot commentDoc in commentsSnapshot.docs) {
+      batch.delete(commentDoc.reference);
+    }
+
+    // Delete the post itself
+    batch.delete(postRef);
+
+    // Commit the batch delete
+    await batch.commit();
   }
 
   // -------------------------
