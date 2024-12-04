@@ -21,6 +21,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
   final TimelineService timelineService = TimelineService();
   final TextEditingController _controller = TextEditingController();
   bool _isSubmitting = false;
+  final ScrollController _scrollController = ScrollController();
 
   // Method to add a comment
   void _addComment(String currentUserId) async {
@@ -38,6 +39,13 @@ class _CommentsScreenState extends State<CommentsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Comment added successfully!')),
       );
+
+      // Scroll to the bottom to show the new comment
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent + 100,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error adding comment: $e')),
@@ -47,6 +55,13 @@ class _CommentsScreenState extends State<CommentsScreen> {
         _isSubmitting = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose(); // Dispose the ScrollController
+    super.dispose();
   }
 
   @override
@@ -81,95 +96,96 @@ class _CommentsScreenState extends State<CommentsScreen> {
           ),
         ),
       )
-          : Column(
-        children: [
-          Expanded(
-            child: StreamBuilder<List<Comment>>(
-              stream: timelineService.getComments(widget.postId),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error loading comments: ${snapshot.error}',
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  );
-                }
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final comments = snapshot.data!;
-                return FutureBuilder<Post>(
-                  future: timelineService.getPostById(widget.postId, currentUserId),
-                  builder: (context, postSnapshot) {
-                    if (postSnapshot.hasError) {
-                      return Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          'Error loading post: ${postSnapshot.error}',
-                          style: const TextStyle(color: Colors.red),
-                        ),
-                      );
-                    }
-                    if (postSnapshot.connectionState == ConnectionState.waiting) {
-                      return const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    final post = postSnapshot.data!;
+          : FutureBuilder<Post>(
+        future: timelineService.getPostById(widget.postId, currentUserId),
+        builder: (context, postSnapshot) {
+          if (postSnapshot.hasError) {
+            return Center(
+              child: Text(
+                'Error loading post: ${postSnapshot.error}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
+          }
+          if (postSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final post = postSnapshot.data!;
 
-                    // Combine the post and comments into a single list
-                    final List<Widget> items = [
-                      PostWidget(post: post),
-                      const Divider(height: 1),
-                    ];
-                    items.addAll(comments.map((comment) => CommentWidget(comment: comment)).toList());
-
-                    return ListView.builder(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        return items[index];
-                      },
-                    );
-                  },
+          return StreamBuilder<List<Comment>>(
+            stream: timelineService.getComments(widget.postId, currentUserId),
+            builder: (context, commentsSnapshot) {
+              if (commentsSnapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Error loading comments: ${commentsSnapshot.error}',
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 );
+              }
+              if (commentsSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final comments = commentsSnapshot.data!;
+
+              // Create a combined list with PostWidget and comments
+              final List<Widget> combinedList = [
+                PostWidget(
+                  key: ValueKey(post.id),
+                  post: post,
+                ),
+                const Divider(height: 1),
+                ...comments.map((comment) => CommentWidget(
+                  key: ValueKey(comment.id),
+                  postId: widget.postId,
+                  comment: comment,
+                )),
+              ];
+
+              return ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: combinedList.length,
+                itemBuilder: (context, index) {
+                  return combinedList[index];
+                },
+              );
+            },
+          );
+        },
+      ),
+      bottomNavigationBar: _isSubmitting
+          ? const LinearProgressIndicator()
+          : Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                decoration: const InputDecoration(
+                  hintText: 'Add a comment...',
+                  border: OutlineInputBorder(),
+                ),
+                minLines: 1,
+                maxLines: 5,
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.send),
+              color: _isSubmitting
+                  ? Colors.grey
+                  : const Color(0xFF6A0DAD), // Match theme color
+              onPressed: _isSubmitting
+                  ? null
+                  : () {
+                if (currentUserId != null) {
+                  _addComment(currentUserId);
+                }
               },
             ),
-          ),
-          // Input Field to Add Comment
-          if (_isSubmitting) const LinearProgressIndicator(),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      hintText: 'Add a comment...',
-                      border: OutlineInputBorder(),
-                    ),
-                    minLines: 1,
-                    maxLines: 5,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  color: _isSubmitting
-                      ? Colors.grey
-                      : const Color(0xFF6A0DAD), // Match theme color
-                  onPressed: _isSubmitting
-                      ? null
-                      : () {
-                    _addComment(currentUserId);
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

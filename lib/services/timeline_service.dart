@@ -1,12 +1,16 @@
 // timeline_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/post.dart';
-import '../models/comment.dart'; // Import Comment model
+import '../models/comment.dart';
 
 class TimelineService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Fetch posts with isLiked property
+  // -------------------------
+  // Post-Related Methods
+  // -------------------------
+
+  /// Fetch posts with isLiked property
   Stream<List<Post>> getPosts(String currentUserId) {
     return _firestore
         .collection('posts')
@@ -17,7 +21,7 @@ class TimelineService {
         .toList());
   }
 
-  // Toggle like status
+  /// Toggle like status
   Future<void> toggleLike(String postId, String currentUserId) async {
     DocumentReference postRef = _firestore.collection('posts').doc(postId);
     DocumentSnapshot postSnapshot = await postRef.get();
@@ -42,8 +46,9 @@ class TimelineService {
     }
   }
 
-  // Create a new post
-  Future<void> createPost(String content, {String? imageUrl, required String currentUserId}) async {
+  /// Create a new post
+  Future<void> createPost(String content,
+      {String? imageUrl, required String currentUserId}) async {
     await _firestore.collection('posts').add({
       'userId': currentUserId,
       'content': content,
@@ -55,8 +60,19 @@ class TimelineService {
     });
   }
 
-  // Add a comment to a post
-  Future<void> addComment(String postId, String content, String currentUserId) async {
+  /// Get post by its ID
+  Future<Post> getPostById(String postId, String currentUserId) async {
+    DocumentSnapshot doc = await _firestore.collection('posts').doc(postId).get();
+    return Post.fromDocument(doc, currentUserId: currentUserId);
+  }
+
+  // -------------------------
+  // Comment-Related Methods
+  // -------------------------
+
+  /// Add a comment to a post
+  Future<void> addComment(
+      String postId, String content, String currentUserId) async {
     DocumentReference postRef = _firestore.collection('posts').doc(postId);
 
     // Add the comment to the 'comments' subcollection
@@ -64,6 +80,8 @@ class TimelineService {
       'userId': currentUserId,
       'content': content,
       'createdAt': Timestamp.now(),
+      'likesCount': 0,
+      'likes': [], // Initialize likes as empty array
     });
 
     // Increment the commentsCount in the post document
@@ -72,8 +90,8 @@ class TimelineService {
     });
   }
 
-  // Get comments for a post
-  Stream<List<Comment>> getComments(String postId) {
+  /// Get comments for a post
+  Stream<List<Comment>> getComments(String postId, String currentUserId) {
     return _firestore
         .collection('posts')
         .doc(postId)
@@ -81,12 +99,38 @@ class TimelineService {
         .orderBy('createdAt', descending: false)
         .snapshots()
         .map((snapshot) => snapshot.docs
-        .map((doc) => Comment.fromDocument(doc))
+        .map((doc) => Comment.fromDocument(doc, currentUserId: currentUserId))
         .toList());
   }
-// Get post by its ID
-  Future<Post> getPostById(String postId, String currentUserId) async {
-    DocumentSnapshot doc = await _firestore.collection('posts').doc(postId).get();
-    return Post.fromDocument(doc, currentUserId: currentUserId);
+
+  /// Toggle like status on a comment
+  Future<void> toggleLikeOnComment(
+      String postId, String commentId, String currentUserId) async {
+    DocumentReference commentRef = _firestore
+        .collection('posts')
+        .doc(postId)
+        .collection('comments')
+        .doc(commentId);
+
+    DocumentSnapshot commentSnapshot = await commentRef.get();
+
+    if (commentSnapshot.exists) {
+      List<dynamic> likes = commentSnapshot.get('likes') ?? [];
+      int likesCount = commentSnapshot.get('likesCount') ?? 0;
+
+      if (likes.contains(currentUserId)) {
+        // Unlike the comment
+        await commentRef.update({
+          'likes': FieldValue.arrayRemove([currentUserId]),
+          'likesCount': likesCount > 0 ? likesCount - 1 : 0,
+        });
+      } else {
+        // Like the comment
+        await commentRef.update({
+          'likes': FieldValue.arrayUnion([currentUserId]),
+          'likesCount': likesCount + 1,
+        });
+      }
+    }
   }
 }

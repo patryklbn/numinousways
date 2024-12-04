@@ -1,5 +1,4 @@
-// lib/widgets/comment_widget.dart
-
+// comment_widget.dart
 import 'package:flutter/material.dart';
 import '../../models/comment.dart';
 import '../../models/user_profile.dart';
@@ -7,12 +6,67 @@ import '../../services/profile_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../services/login_provider.dart';
 import 'package:provider/provider.dart';
+import '../../services/timeline_service.dart';
 import '../../screens/profile/profile_screen.dart';
 
-class CommentWidget extends StatelessWidget {
+class CommentWidget extends StatefulWidget {
+  final String postId; // The ID of the post to which the comment belongs
   final Comment comment;
 
-  const CommentWidget({Key? key, required this.comment}) : super(key: key);
+  const CommentWidget({
+    Key? key,
+    required this.postId,
+    required this.comment,
+  }) : super(key: key);
+
+  @override
+  _CommentWidgetState createState() => _CommentWidgetState();
+}
+
+class _CommentWidgetState extends State<CommentWidget> {
+  late bool isLiked;
+  late int likesCount;
+  late String currentUserId;
+  final TimelineService _timelineService = TimelineService();
+
+  @override
+  void initState() {
+    super.initState();
+    isLiked = widget.comment.isLiked;
+    likesCount = widget.comment.likesCount;
+
+    // Initialize currentUserId in initState
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+    currentUserId = loginProvider.userId ?? '';
+  }
+
+  void _toggleLike() async {
+    if (currentUserId.isEmpty) return;
+
+    try {
+      await _timelineService.toggleLikeOnComment(
+          widget.postId, widget.comment.id, currentUserId);
+
+      if (!mounted) return; // Ensure the widget is still mounted
+
+      setState(() {
+        if (isLiked) {
+          isLiked = false;
+          likesCount--;
+        } else {
+          isLiked = true;
+          likesCount++;
+        }
+      });
+    } catch (e) {
+      // Handle any error that may occur during like/unlike operation
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error toggling like: $e')),
+        );
+      }
+    }
+  }
 
   Future<UserProfile?> _fetchUserProfile(String userId) async {
     ProfileService profileService = ProfileService();
@@ -22,7 +76,7 @@ class CommentWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<UserProfile?>(
-      future: _fetchUserProfile(comment.userId),
+      future: _fetchUserProfile(widget.comment.userId),
       builder: (context, snapshot) {
         UserProfile? user = snapshot.data;
         return Container(
@@ -51,8 +105,8 @@ class CommentWidget extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) => ProfileScreen(
-                        userId: comment.userId,
-                        loggedInUserId: Provider.of<LoginProvider>(context, listen: false).userId!,
+                        userId: widget.comment.userId,
+                        loggedInUserId: currentUserId,
                       ),
                     ),
                   );
@@ -69,7 +123,7 @@ class CommentWidget extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              // Comment Content
+              // Comment Content and Actions
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,8 +139,8 @@ class CommentWidget extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => ProfileScreen(
-                                  userId: comment.userId,
-                                  loggedInUserId: Provider.of<LoginProvider>(context, listen: false).userId!,
+                                  userId: widget.comment.userId,
+                                  loggedInUserId: currentUserId,
                                 ),
                               ),
                             );
@@ -101,7 +155,7 @@ class CommentWidget extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          timeago.format(comment.createdAt.toDate()),
+                          timeago.format(widget.comment.createdAt.toDate()),
                           style: const TextStyle(color: Colors.grey, fontSize: 12),
                         ),
                       ],
@@ -109,8 +163,32 @@ class CommentWidget extends StatelessWidget {
                     const SizedBox(height: 4),
                     // Comment Text
                     Text(
-                      comment.content,
+                      widget.comment.content,
                       style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
+                    ),
+                    const SizedBox(height: 8),
+                    // Like Button and Count - Aligned to Left
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.start, // Ensure alignment to left
+                      crossAxisAlignment: CrossAxisAlignment.center, // Vertically center the items
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: isLiked ? Colors.red : Colors.grey,
+                            size: 20,
+                          ),
+                          onPressed: _toggleLike,
+                          padding: EdgeInsets.zero, // Remove default padding
+                          constraints: const BoxConstraints(), // Remove default constraints
+                        ),
+                        const SizedBox(width: 4), // Small space between icon and count
+                        Text(
+                          '$likesCount',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                        // Optional: Add more actions here (e.g., reply, share)
+                      ],
                     ),
                   ],
                 ),
