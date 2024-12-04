@@ -1,5 +1,3 @@
-// lib/screens/timeline/timeline_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/timeline_service.dart';
@@ -53,14 +51,6 @@ class _TimelineScreenState extends State<TimelineScreen> {
         ),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              // Implement refresh functionality if needed
-            },
-          ),
-        ],
       ),
       drawer: const AppDrawer(), // Include the drawer in the Scaffold
       body: StreamBuilder<List<Post>>(
@@ -88,7 +78,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
           }
           return RefreshIndicator(
             onRefresh: () async {
-              // Implement refresh logic if necessary
+              // This action refreshes the screen by pulling down
+              setState(() {});
             },
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -103,16 +94,40 @@ class _TimelineScreenState extends State<TimelineScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to create post screen
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreatePostScreen()),
-          );
-        },
-        backgroundColor: const Color(0xFF6A0DAD),
-        child: const Icon(Icons.add, size: 28),
+      floatingActionButton: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () {
+            // Navigate to create post screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CreatePostScreen()),
+            );
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: const Icon(
+            Icons.add,
+            size: 28,
+            color: Colors.white, // Make the "+" icon white
+          ),
+        ),
       ),
     );
   }
