@@ -14,8 +14,14 @@ import '../../services/login_provider.dart';
 class PostWidget extends StatelessWidget {
   final Post post;
   final ValueNotifier<bool> isCommentsScreenOpen;
+  final Function(Post updatedPost)? onPostLikeToggled;
 
-  const PostWidget({Key? key, required this.post, required this.isCommentsScreenOpen}) : super(key: key);
+  const PostWidget({
+    Key? key,
+    required this.post,
+    required this.isCommentsScreenOpen,
+    this.onPostLikeToggled,
+  }) : super(key: key);
 
   Future<UserProfile?> _fetchUserProfile(String userId) async {
     ProfileService profileService = ProfileService();
@@ -47,18 +53,16 @@ class PostWidget extends StatelessWidget {
       builder: (context, snapshot) {
         UserProfile? user = snapshot.data;
         return Card(
-          color: Colors.white, // Set the background color to pure white
+          color: Colors.white,
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
           elevation: 4,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Info and Timestamp
               ListTile(
                 leading: GestureDetector(
                   onTap: () {
-                    // Navigate to user's profile
                     if (currentUserId != null) {
                       Navigator.push(
                         context,
@@ -87,7 +91,6 @@ class PostWidget extends StatelessWidget {
                 ),
                 title: GestureDetector(
                   onTap: () {
-                    // Navigate to user's profile
                     if (currentUserId != null) {
                       Navigator.push(
                         context,
@@ -113,11 +116,9 @@ class PostWidget extends StatelessWidget {
                   timeago.format(post.createdAt.toDate()),
                   style: const TextStyle(color: Colors.grey, fontSize: 14),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
                 trailing: currentUserId == post.userId
                     ? PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert),
-                  color: Colors.white, // Set background to pure white
                   onSelected: (String value) {
                     if (value == 'delete') {
                       _deletePost(context, post.id);
@@ -129,10 +130,7 @@ class PostWidget extends StatelessWidget {
                         value: 'delete',
                         child: Row(
                           children: [
-                            const Icon(
-                              Icons.delete,
-                              color: Colors.red, // Red trash icon
-                            ),
+                            const Icon(Icons.delete, color: Colors.red),
                             const SizedBox(width: 8),
                             const Text('Delete Post'),
                           ],
@@ -143,7 +141,6 @@ class PostWidget extends StatelessWidget {
                 )
                     : null,
               ),
-              // Post Content
               if (post.content.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -153,7 +150,6 @@ class PostWidget extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 10),
-              // Post Image
               if (post.imageUrl != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -176,16 +172,22 @@ class PostWidget extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 10),
-              // Actions: Like and Comment
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   children: [
-                    // Like Button
                     GestureDetector(
                       onTap: () async {
                         if (currentUserId != null) {
                           await timelineService.toggleLike(post.id, currentUserId);
+                          Post updatedPost = post.copyWith(
+                            isLiked: !post.isLiked,
+                            likesCount: post.isLiked ? post.likesCount - 1 : post.likesCount + 1,
+                          );
+
+                          if (onPostLikeToggled != null) {
+                            onPostLikeToggled!(updatedPost);
+                          }
                         }
                       },
                       child: Row(
@@ -204,7 +206,6 @@ class PostWidget extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 24),
-                    // Comment Button
                     ValueListenableBuilder<bool>(
                       valueListenable: isCommentsScreenOpen,
                       builder: (context, isDisabled, _) {
@@ -212,15 +213,13 @@ class PostWidget extends StatelessWidget {
                           onTap: isDisabled
                               ? null
                               : () {
-                            // Navigate to comments screen
-                            isCommentsScreenOpen.value = true; // Disable button while navigating
+                            isCommentsScreenOpen.value = true;
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => CommentsScreen(postId: post.id),
                               ),
                             ).then((_) {
-                              // Reactivate button when coming back
                               isCommentsScreenOpen.value = false;
                             });
                           },

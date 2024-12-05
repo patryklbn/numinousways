@@ -21,9 +21,8 @@ class _CommentsScreenState extends State<CommentsScreen> {
   final TextEditingController _controller = TextEditingController();
   bool _isSubmitting = false;
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<bool> isCommentsScreenOpen = ValueNotifier<bool>(true); // Default to true since the screen is already open
+  final ValueNotifier<bool> isCommentsScreenOpen = ValueNotifier<bool>(true);
 
-  // Method to add a comment
   void _addComment(String currentUserId) async {
     String content = _controller.text.trim();
     if (content.isEmpty) return;
@@ -40,7 +39,6 @@ class _CommentsScreenState extends State<CommentsScreen> {
         const SnackBar(content: Text('Comment added successfully!')),
       );
 
-      // Scroll to the bottom to show the new comment
       _scrollController.animateTo(
         _scrollController.position.maxScrollExtent + 100,
         duration: const Duration(milliseconds: 300),
@@ -60,26 +58,19 @@ class _CommentsScreenState extends State<CommentsScreen> {
   @override
   void dispose() {
     _controller.dispose();
-    _scrollController.dispose(); // Dispose the ScrollController
-    isCommentsScreenOpen.dispose(); // Dispose ValueNotifier
+    _scrollController.dispose();
+    isCommentsScreenOpen.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Access the LoginProvider to get the currentUserId
     final loginProvider = Provider.of<LoginProvider>(context);
     final String? currentUserId = loginProvider.userId;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Comments",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
-        ),
+        title: const Text("Comments", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
@@ -135,12 +126,17 @@ class _CommentsScreenState extends State<CommentsScreen> {
               }
               final comments = commentsSnapshot.data!;
 
-              // Create a combined list with PostWidget and comments
               final List<Widget> combinedList = [
                 PostWidget(
                   key: ValueKey(post.id),
                   post: post,
-                  isCommentsScreenOpen: isCommentsScreenOpen, // Pass ValueNotifier here
+                  isCommentsScreenOpen: isCommentsScreenOpen,
+                  onPostLikeToggled: (updatedPost) {
+                    setState(() {
+                      post.isLiked = updatedPost.isLiked;
+                      post.likesCount = updatedPost.likesCount;
+                    });
+                  },
                 ),
                 const Divider(height: 1),
                 ...comments.map(
@@ -186,9 +182,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.send),
-              color: _isSubmitting
-                  ? Colors.grey
-                  : const Color(0xFF6A0DAD), // Match theme color
+              color: _isSubmitting ? Colors.grey : const Color(0xFF6A0DAD),
               onPressed: _isSubmitting
                   ? null
                   : () {
