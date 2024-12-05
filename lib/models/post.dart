@@ -9,7 +9,7 @@ class Post {
   Timestamp createdAt;
   int likesCount;
   int commentsCount;
-  bool isLiked; // New property
+  bool isLiked;
 
   Post({
     required this.id,
@@ -19,12 +19,11 @@ class Post {
     required this.createdAt,
     this.likesCount = 0,
     this.commentsCount = 0,
-    this.isLiked = false, // Default value
+    this.isLiked = false,
   });
 
   factory Post.fromDocument(DocumentSnapshot doc, {required String currentUserId}) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    // Determine if the current user has liked the post
     bool liked = false;
     if (data['likes'] != null && data['likes'] is List) {
       liked = (data['likes'] as List).contains(currentUserId);
@@ -41,15 +40,16 @@ class Post {
     );
   }
 
-  Map<String, dynamic> toMap() {
-    return {
-      'userId': userId,
-      'content': content,
-      'imageUrl': imageUrl,
-      'createdAt': createdAt,
-      'likesCount': likesCount,
-      'commentsCount': commentsCount,
-      // 'isLiked' is not stored in Firestore as it's user-specific
-    };
+  Post copyWith({int? likesCount, bool? isLiked}) {
+    return Post(
+      id: this.id,
+      userId: this.userId,
+      content: this.content,
+      imageUrl: this.imageUrl,
+      createdAt: this.createdAt,
+      likesCount: likesCount ?? this.likesCount,
+      commentsCount: this.commentsCount,
+      isLiked: isLiked ?? this.isLiked,
+    );
   }
 }

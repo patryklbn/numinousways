@@ -1,4 +1,3 @@
-// post_widget.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/timeline_service.dart';
@@ -14,12 +13,33 @@ import '../../services/login_provider.dart';
 
 class PostWidget extends StatelessWidget {
   final Post post;
+  final ValueNotifier<bool> isCommentsScreenOpen;
+  final Function(Post updatedPost)? onPostLikeToggled;
 
-  const PostWidget({Key? key, required this.post}) : super(key: key);
+  const PostWidget({
+    Key? key,
+    required this.post,
+    required this.isCommentsScreenOpen,
+    this.onPostLikeToggled,
+  }) : super(key: key);
 
   Future<UserProfile?> _fetchUserProfile(String userId) async {
     ProfileService profileService = ProfileService();
     return await profileService.getUserProfile(userId);
+  }
+
+  void _deletePost(BuildContext context, String postId) async {
+    final TimelineService timelineService = TimelineService();
+    try {
+      await timelineService.deletePost(postId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post deleted successfully.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting post: $e')),
+      );
+    }
   }
 
   @override
@@ -33,18 +53,16 @@ class PostWidget extends StatelessWidget {
       builder: (context, snapshot) {
         UserProfile? user = snapshot.data;
         return Card(
-          color: Colors.white, // Set the background color to pure white
+          color: Colors.white,
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
           elevation: 4,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Info and Timestamp
               ListTile(
                 leading: GestureDetector(
                   onTap: () {
-                    // Navigate to user's profile
                     if (currentUserId != null) {
                       Navigator.push(
                         context,
@@ -73,7 +91,6 @@ class PostWidget extends StatelessWidget {
                 ),
                 title: GestureDetector(
                   onTap: () {
-                    // Navigate to user's profile
                     if (currentUserId != null) {
                       Navigator.push(
                         context,
@@ -99,9 +116,31 @@ class PostWidget extends StatelessWidget {
                   timeago.format(post.createdAt.toDate()),
                   style: const TextStyle(color: Colors.grey, fontSize: 14),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
+                trailing: currentUserId == post.userId
+                    ? PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (String value) {
+                    if (value == 'delete') {
+                      _deletePost(context, post.id);
+                    }
+                  },
+                  itemBuilder: (BuildContext context) {
+                    return [
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.delete, color: Colors.red),
+                            const SizedBox(width: 8),
+                            const Text('Delete Post'),
+                          ],
+                        ),
+                      ),
+                    ];
+                  },
+                )
+                    : null,
               ),
-              // Post Content
               if (post.content.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -111,7 +150,6 @@ class PostWidget extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 10),
-              // Post Image
               if (post.imageUrl != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -134,16 +172,22 @@ class PostWidget extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 10),
-              // Actions: Like and Comment
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   children: [
-                    // Like Button
                     GestureDetector(
                       onTap: () async {
                         if (currentUserId != null) {
                           await timelineService.toggleLike(post.id, currentUserId);
+                          Post updatedPost = post.copyWith(
+                            isLiked: !post.isLiked,
+                            likesCount: post.isLiked ? post.likesCount - 1 : post.likesCount + 1,
+                          );
+
+                          if (onPostLikeToggled != null) {
+                            onPostLikeToggled!(updatedPost);
+                          }
                         }
                       },
                       child: Row(
@@ -162,31 +206,41 @@ class PostWidget extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 24),
-                    // Comment Button
-                    GestureDetector(
-                      onTap: () {
-                        // Navigate to comments screen
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CommentsScreen(postId: post.id),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: isCommentsScreenOpen,
+                      builder: (context, isDisabled, _) {
+                        return GestureDetector(
+                          onTap: isDisabled
+                              ? null
+                              : () {
+                            isCommentsScreenOpen.value = true;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CommentsScreen(postId: post.id),
+                              ),
+                            ).then((_) {
+                              isCommentsScreenOpen.value = false;
+                            });
+                          },
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.comment_outlined,
+                                color: isDisabled ? Colors.grey[400] : Colors.grey,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${post.commentsCount}',
+                                style: TextStyle(
+                                  color: isDisabled ? Colors.grey[400] : Colors.grey,
+                                ),
+                              ),
+                            ],
                           ),
                         );
                       },
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.comment_outlined,
-                            color: Colors.grey,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${post.commentsCount}',
-                            style: const TextStyle(color: Colors.grey),
-                          ),
-                        ],
-                      ),
                     ),
                   ],
                 ),

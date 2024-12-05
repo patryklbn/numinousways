@@ -1,5 +1,3 @@
-// lib/screens/timeline/timeline_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/timeline_service.dart';
@@ -9,8 +7,21 @@ import '../../widgets/timeline/post_widget.dart';
 import '../../widgets/app_drawer.dart'; // Import AppDrawer
 import 'create_post_screen.dart';
 
-class TimelineScreen extends StatelessWidget {
+class TimelineScreen extends StatefulWidget {
   const TimelineScreen({Key? key}) : super(key: key);
+
+  @override
+  State<TimelineScreen> createState() => _TimelineScreenState();
+}
+
+class _TimelineScreenState extends State<TimelineScreen> {
+  final ValueNotifier<bool> isCommentsScreenOpen = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    isCommentsScreenOpen.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,14 +51,6 @@ class TimelineScreen extends StatelessWidget {
         ),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              // Implement refresh functionality if needed
-            },
-          ),
-        ],
       ),
       drawer: const AppDrawer(), // Include the drawer in the Scaffold
       body: StreamBuilder<List<Post>>(
@@ -75,28 +78,56 @@ class TimelineScreen extends StatelessWidget {
           }
           return RefreshIndicator(
             onRefresh: () async {
-              // Implement refresh logic if necessary
+              // This action refreshes the screen by pulling down
+              setState(() {});
             },
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: posts.length,
               itemBuilder: (context, index) {
-                return PostWidget(post: posts[index]);
+                return PostWidget(
+                  post: posts[index],
+                  isCommentsScreenOpen: isCommentsScreenOpen, // Pass the ValueNotifier here
+                );
               },
             ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to create post screen
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreatePostScreen()),
-          );
-        },
-        backgroundColor: const Color(0xFF6A0DAD),
-        child: const Icon(Icons.add, size: 28),
+      floatingActionButton: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () {
+            // Navigate to create post screen
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CreatePostScreen()),
+            );
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: const Icon(
+            Icons.add,
+            size: 28,
+            color: Colors.white, // Make the "+" icon white
+          ),
+        ),
       ),
     );
   }
