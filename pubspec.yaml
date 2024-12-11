@@ -51,6 +51,7 @@ dependencies:
   sqflite: ^2.4.1
   timeago: ^3.7.0
   font_awesome_flutter: ^10.8.0
+  flutter_staggered_animations: ^1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +84,31 @@ flutter:
     - assets/images/onboarding-3.png
     - assets/images/forgott-password.png
     - assets/default_avatar.png
+    - assets/images/myretreat/myretreathero.png
+    - assets/images/myretreat/experience.png
+    - assets/images/myretreat/integration.png
+    - assets/images/myretreat/preparation.png
+    - assets/images/myretreat/netherland/netherland1.png
+    - assets/images/myretreat/netherland/netherland2.png
+    - assets/images/myretreat/netherland/netherland3.png
+    - assets/images/myretreat/netherland/netherland4.png
+    - assets/images/myretreat/netherland/netherland5.png
+    - assets/images/myretreat/netherland/netherland6.png
+    - assets/images/myretreat/portgual/portugal1.png
+    - assets/images/myretreat/portgual/portugal2.png
+    - assets/images/myretreat/portgual/portugal3.png
+    - assets/images/myretreat/portgual/portugal4.png
+    - assets/images/myretreat/portgual/portugal5.png
+    - assets/images/myretreat/portgual/portugal6.png
+    - assets/images/myretreat/facilitatots/zwolan.png
+    - assets/images/myretreat/facilitatots/danielle.png
+    - assets/images/myretreat/facilitatots/duncan.png
+    - assets/images/myretreat/facilitatots/hawthorn.png
+    - assets/images/myretreat/facilitatots/mishra.png
+    - assets/images/myretreat/facilitatots/bloomfield.png
+    - assets/images/myretreat/facilitatots/topolski.png
+    - assets/images/myretreat/facilitatots/siddique.png
+    - assets/images/myretreat/facilitatots/jorge.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see

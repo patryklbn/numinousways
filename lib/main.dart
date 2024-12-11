@@ -9,6 +9,8 @@ import 'screens/login/forgotpassword_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/timeline/timeline_screen.dart';
+import 'screens/my_retreat/my_retreat_screen.dart';
+import 'screens/my_retreat/retreat_info_screen.dart';
 import 'viewmodels/profile_viewmodel.dart';
 import 'services/login_provider.dart';
 import 'widgets/app_drawer.dart';
@@ -95,6 +97,8 @@ class MyApp extends StatelessWidget {
             '/forgot-password': (context) => ForgotPasswordScreen(),
             '/timeline': (context) => TimelineScreen(),
             '/edit_profile': (context) => EditProfileScreen(),
+            '/my_retreat': (context) => MyRetreatScreen(),
+            '/retreat_info': (context) => RetreatInfoScreen(),
           },
         )
     );
