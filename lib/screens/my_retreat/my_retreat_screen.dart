@@ -1,77 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+
+import '../../models/facilitator.dart';
+import '../../models/venue.dart';
+import '../../services/myretreat_service.dart';
+import '../../services/login_provider.dart';
 import '../../screens/full_screen_image_viewer.dart';
+import '../login/login_screen.dart';
 
 class MyRetreatScreen extends StatelessWidget {
   const MyRetreatScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final facilitators = [
-      {
-        'name': 'Dr Christoph Zwolan',
-        'role': 'CLINICAL DIRECTOR | PSYCHOLOGIST',
-        'photoUrl': 'assets/images/myretreat/facilitatots/zwolan.png',
-      },
-      {
-        'name': 'Danielle Tanner',
-        'role': 'BODY THERAPIST | CLINICAL SUPERVISOR',
-        'photoUrl': 'assets/images/myretreat/facilitatots/danielle.png',
-      },
-      {
-        'name': 'Roger Duncan',
-        'role': 'SYSTEMIC PSYCHOTHERAPIST | RETREAT FACILITATOR',
-        'photoUrl': 'assets/images/myretreat/facilitatots/duncan.png',
-      },
-      {
-        'name': 'Dr Jake Hawthorn',
-        'role': 'PSYCHIATRIST | RETREAT FACILITATOR',
-        'photoUrl': 'assets/images/myretreat/facilitatots/hawthorn.png',
-      },
-      {
-        'name': 'Shashank Mishra',
-        'role': 'COUNSELLOR | RETREAT FACILITATOR',
-        'photoUrl': 'assets/images/myretreat/facilitatots/mishra.png',
-      },
-      {
-        'name': 'Sam Bloomfield',
-        'role': 'ARTS PSYCHOTHERAPIST | RETREAT FACILITATOR',
-        'photoUrl': 'assets/images/myretreat/facilitatots/bloomfield.png',
-      },
-      {
-        'name': 'Michal Topolski',
-        'role': 'RETREAT FACILITATOR',
-        'photoUrl': 'assets/images/myretreat/facilitatots/topolski.png',
-      },
-      {
-        'name': 'John Siddique',
-        'role': 'MEDITATION TEACHER',
-        'photoUrl': 'assets/images/myretreat/facilitatots/siddique.png',
-      },
-      {
-        'name': 'Ana Jorge',
-        'role': 'RETREAT ASSISTANT',
-        'photoUrl': 'assets/images/myretreat/facilitatots/jorge.png',
-      },
-    ];
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
 
-    final portugalImages = [
-      'assets/images/myretreat/portgual/portugal1.png',
-      'assets/images/myretreat/portgual/portugal2.png',
-      'assets/images/myretreat/portgual/portugal3.png',
-      'assets/images/myretreat/portgual/portugal4.png',
-      'assets/images/myretreat/portgual/portugal5.png',
-      'assets/images/myretreat/portgual/portugal6.png',
-    ];
+    // If user is not logged in, redirect to login
+    if (!loginProvider.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => LoginScreen()),
+        );
+      });
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    final netherlandsImages = [
-      'assets/images/myretreat/netherland/netherland1.png',
-      'assets/images/myretreat/netherland/netherland2.png',
-      'assets/images/myretreat/netherland/netherland3.png',
-      'assets/images/myretreat/netherland/netherland4.png',
-      'assets/images/myretreat/netherland/netherland5.png',
-      'assets/images/myretreat/netherland/netherland6.png',
-    ];
+    // Get the currentUserId for personalization
+    final currentUserId = loginProvider.userId!;
+    final myRetreatService = Provider.of<MyRetreatService>(context, listen: false);
 
     return Scaffold(
       body: CustomScrollView(
@@ -91,21 +52,26 @@ class MyRetreatScreen extends StatelessWidget {
                       SizedBox(height: 24),
                       _buildFeatureCards(context),
                       SizedBox(height: 32),
+                      // Fetch and display Portugal venue
                       _buildVenuesSection(
                         'Portugal',
-                        portugalImages,
                         context,
                         'Our venues in Portugal offer spacious rooms, open spaces for meditation and breathwork as well as an array of facilities including a heated pool and sauna.',
+                        myRetreatService,
+                        currentUserId,
                       ),
                       SizedBox(height: 32),
+                      // Fetch and display Netherlands venue
                       _buildVenuesSection(
                         'Netherlands',
-                        netherlandsImages,
                         context,
-                        'Our Netherlands location is a sanctuary amidst luscious green spaces where nature’s embrace invites tranquillity and rejuvenation. A perfect setting for introspection and deep journeying during your psychedelic retreat.',
+                        'Our Netherlands location is a sanctuary amidst luscious green spaces where nature’s embrace invites tranquillity and rejuvenation.',
+                        myRetreatService,
+                        currentUserId,
                       ),
                       SizedBox(height: 32),
-                      _buildFacilitatorsSection(facilitators),
+                      // Fetch and display facilitators
+                      _buildFacilitatorsSection(context, myRetreatService, currentUserId),
                       SizedBox(height: 32),
                     ],
                   ),
@@ -141,6 +107,7 @@ class MyRetreatScreen extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
+            // If you want a hero image from Firebase, consider fetching a URL or using a local asset
             Image.asset(
               'assets/images/myretreat/myretreathero.png',
               fit: BoxFit.cover,
@@ -156,11 +123,11 @@ class MyRetreatScreen extends StatelessWidget {
     return Text(
       'At Numinous Way, our retreats seamlessly guide you through essential preparation, immersive experiences, and mindful integration. With curated tasks, transformative exercises, and supportive environments, we create a nurturing space for profound personal growth and self-discovery.',
       style: TextStyle(
-        fontSize: 14, // Adjusted as per your latest code
+        fontSize: 14,
         fontWeight: FontWeight.w600,
-        fontFamily: 'Roboto', // Added Roboto font
+        fontFamily: 'Roboto',
         color: Colors.black87,
-        height: 1.6, // Line height for readability
+        height: 1.6,
         shadows: [
           Shadow(
             offset: Offset(0, 1),
@@ -177,7 +144,6 @@ class MyRetreatScreen extends StatelessWidget {
     double horizontalPadding = 16 * 2;
     double availableWidth = screenWidth - horizontalPadding;
 
-    // Updated descriptions
     String prepDescription = '21-day checklist & tasks';
     String expDescription = 'Schedule & feedback';
     String intDescription = 'Mindfulness tools';
@@ -235,7 +201,8 @@ class MyRetreatScreen extends StatelessWidget {
     required double width,
     bool isLarge = false,
   }) {
-    // Determine background image based on title
+    // If you want background images from Firebase, consider retrieving URLs dynamically
+    // For now, keep them as local assets
     String backgroundImage;
     if (title == 'Preparation') {
       backgroundImage = 'assets/images/myretreat/preparation.png';
@@ -247,12 +214,9 @@ class MyRetreatScreen extends StatelessWidget {
       backgroundImage = '';
     }
 
-    // Adjust font sizes
     double titleFontSize = isLarge ? 20 : 18;
     double descriptionFontSize = isLarge ? 18 : 16;
     double iconSize = isLarge ? 50 : 40;
-
-    // Slightly darker overlay for better contrast
     double overlayOpacity = 0.3;
 
     return GestureDetector(
@@ -281,7 +245,7 @@ class MyRetreatScreen extends StatelessWidget {
             Icon(
               icon,
               size: iconSize,
-              color: Colors.white, // Changed icon color to white
+              color: Colors.white,
             ),
             SizedBox(height: isLarge ? 16 : 12),
             Text(
@@ -325,7 +289,7 @@ class MyRetreatScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVenuesSection(String title, List<String> images, BuildContext context, String description) {
+  Widget _buildVenuesSection(String title, BuildContext context, String description, MyRetreatService service, String currentUserId) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -339,46 +303,82 @@ class MyRetreatScreen extends StatelessWidget {
           style: TextStyle(fontSize: 14, color: Colors.grey[700]),
         ),
         SizedBox(height: 16),
-        SizedBox(
-          height: 120,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: images.length,
-            separatorBuilder: (context, index) => SizedBox(width: 16),
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FullScreenImageViewer(
-                        imagePath: images[index],
-                        tag: '$title-$index',
+        // StreamBuilder to fetch venues from Firebase
+        StreamBuilder<List<Venue>>(
+          stream: service.getVenues(currentUserId),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Error fetching venues');
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return CircularProgressIndicator();
+            }
+
+            final venues = snapshot.data!;
+            final filteredVenues = venues.where((venue) => venue.name.toLowerCase() == title.toLowerCase()).toList();
+
+            if (filteredVenues.isEmpty) {
+              return Text('No $title venues available');
+            }
+
+            final venue = filteredVenues.first;
+
+            return SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: venue.images.length,
+                separatorBuilder: (context, index) => SizedBox(width: 16),
+                itemBuilder: (context, index) {
+                  final imageUrl = venue.images[index];
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FullScreenImageViewer(
+                            imageUrl: imageUrl,
+                            tag: '$title-$index',
+                          ),
+                        ),
+                      );
+                    },
+                    child: Hero(
+                      tag: '$title-$index',
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          placeholder: (context, url) => Container(
+                            width: 150,
+                            height: 120,
+                            color: Colors.grey[300],
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: 150,
+                            height: 120,
+                            color: Colors.grey[300],
+                            child: Icon(Icons.error),
+                          ),
+                          width: 150,
+                          height: 120,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   );
                 },
-                child: Hero(
-                  tag: '$title-$index',
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.asset(
-                      images[index],
-                      width: 150,
-                      height: 120,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        )
+              ),
+            );
+          },
+        ),
       ],
     );
   }
 
-  Widget _buildFacilitatorsSection(List<Map<String, String>> facilitators) {
+  Widget _buildFacilitatorsSection(BuildContext context, MyRetreatService service, String currentUserId) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -392,46 +392,63 @@ class MyRetreatScreen extends StatelessWidget {
           style: TextStyle(fontSize: 14, color: Colors.grey[700]),
         ),
         SizedBox(height: 16),
-        SizedBox(
-          height: 140, // Increased height to accommodate name and role
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: facilitators.length,
-            separatorBuilder: (context, index) => SizedBox(width: 16),
-            itemBuilder: (context, index) {
-              final facilitator = facilitators[index];
-              return GestureDetector(
-                onTap: () {
-                  // Navigate to facilitator detail screen if exists
+        // StreamBuilder to fetch facilitators from Firebase
+        StreamBuilder<List<Facilitator>>(
+          stream: service.getFacilitators(currentUserId),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Text('Error fetching facilitators');
+            }
+
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return CircularProgressIndicator();
+            }
+
+            final facilitators = snapshot.data!;
+
+            return SizedBox(
+              height: 140,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: facilitators.length,
+                separatorBuilder: (context, index) => SizedBox(width: 16),
+                itemBuilder: (context, index) {
+                  final facilitator = facilitators[index];
+                  return GestureDetector(
+                    onTap: () {
+                      // Navigate to facilitator detail screen if exists
+                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: CachedNetworkImageProvider(facilitator.photoUrl),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          facilitator.name,
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          facilitator.role,
+                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
                 },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundImage: AssetImage(facilitator['photoUrl']!),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      facilitator['name']!,
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      facilitator['role']!,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]), // Adjusted font size to 11
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ],
     );
