@@ -1,21 +1,21 @@
 // lib/screens/full_screen_image_viewer.dart
 
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class FullScreenImageViewer extends StatelessWidget {
-  final String imagePath;
+  final String imageUrl;
   final String tag;
 
   const FullScreenImageViewer({
     Key? key,
-    required this.imagePath,
+    required this.imageUrl,
     required this.tag,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Background color for better visibility
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -23,11 +23,13 @@ class FullScreenImageViewer extends StatelessWidget {
       ),
       body: Center(
         child: Hero(
-          tag: tag, // Unique tag for Hero animation
+          tag: tag,
           child: InteractiveViewer(
-            child: Image.asset(
-              imagePath,
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
               fit: BoxFit.contain,
+              placeholder: (context, url) => Center(child: CircularProgressIndicator()),
+              errorWidget: (context, url, error) => Icon(Icons.error, color: Colors.white),
             ),
           ),
         ),

@@ -13,6 +13,9 @@ import 'screens/my_retreat/my_retreat_screen.dart';
 import 'screens/my_retreat/retreat_info_screen.dart';
 import 'viewmodels/profile_viewmodel.dart';
 import 'services/login_provider.dart';
+import 'services/myretreat_service.dart';
+import 'services/firestore_service.dart';
+import 'services/storage_service.dart';
 import 'widgets/app_drawer.dart';
 import 'screens/main_app_with_drawer.dart';
 
@@ -25,6 +28,9 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
         ChangeNotifierProvider(create: (_) => LoginProvider()),
+        Provider(create: (_) => MyRetreatService(firestoreService: FirestoreService(),
+          storageService: StorageService(),)), // Add this line
+
       ],
       child: const MyApp(),
     ),
