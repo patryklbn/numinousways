@@ -9,6 +9,7 @@ import '../../services/myretreat_service.dart';
 import '../../services/login_provider.dart';
 import '../../screens/full_screen_image_viewer.dart';
 import '../login/login_screen.dart';
+import 'facilitator_profile_screen.dart'; // Make sure to import your new FacilitatorProfileScreen
 
 class MyRetreatScreen extends StatelessWidget {
   const MyRetreatScreen({Key? key}) : super(key: key);
@@ -17,7 +18,6 @@ class MyRetreatScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final loginProvider = Provider.of<LoginProvider>(context, listen: false);
 
-    // If user is not logged in, redirect to login
     if (!loginProvider.isLoggedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacement(
@@ -30,7 +30,6 @@ class MyRetreatScreen extends StatelessWidget {
       );
     }
 
-    // Get the currentUserId for personalization
     final currentUserId = loginProvider.userId!;
     final myRetreatService = Provider.of<MyRetreatService>(context, listen: false);
 
@@ -52,7 +51,6 @@ class MyRetreatScreen extends StatelessWidget {
                       SizedBox(height: 24),
                       _buildFeatureCards(context),
                       SizedBox(height: 32),
-                      // Fetch and display Portugal venue
                       _buildVenuesSection(
                         'Portugal',
                         context,
@@ -61,7 +59,6 @@ class MyRetreatScreen extends StatelessWidget {
                         currentUserId,
                       ),
                       SizedBox(height: 32),
-                      // Fetch and display Netherlands venue
                       _buildVenuesSection(
                         'Netherlands',
                         context,
@@ -70,7 +67,6 @@ class MyRetreatScreen extends StatelessWidget {
                         currentUserId,
                       ),
                       SizedBox(height: 32),
-                      // Fetch and display facilitators
                       _buildFacilitatorsSection(context, myRetreatService, currentUserId),
                       SizedBox(height: 32),
                     ],
@@ -89,6 +85,7 @@ class MyRetreatScreen extends StatelessWidget {
       expandedHeight: 250.0,
       floating: false,
       pinned: true,
+      backgroundColor: Color(0xFFB4347F), // Updated color
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
           'My Retreat',
@@ -107,7 +104,6 @@ class MyRetreatScreen extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // If you want a hero image from Firebase, consider fetching a URL or using a local asset
             Image.asset(
               'assets/images/myretreat/myretreathero.png',
               fit: BoxFit.cover,
@@ -201,8 +197,6 @@ class MyRetreatScreen extends StatelessWidget {
     required double width,
     bool isLarge = false,
   }) {
-    // If you want background images from Firebase, consider retrieving URLs dynamically
-    // For now, keep them as local assets
     String backgroundImage;
     if (title == 'Preparation') {
       backgroundImage = 'assets/images/myretreat/preparation.png';
@@ -303,7 +297,6 @@ class MyRetreatScreen extends StatelessWidget {
           style: TextStyle(fontSize: 14, color: Colors.grey[700]),
         ),
         SizedBox(height: 16),
-        // StreamBuilder to fetch venues from Firebase
         StreamBuilder<List<Venue>>(
           stream: service.getVenues(currentUserId),
           builder: (context, snapshot) {
@@ -392,7 +385,6 @@ class MyRetreatScreen extends StatelessWidget {
           style: TextStyle(fontSize: 14, color: Colors.grey[700]),
         ),
         SizedBox(height: 16),
-        // StreamBuilder to fetch facilitators from Firebase
         StreamBuilder<List<Facilitator>>(
           stream: service.getFacilitators(currentUserId),
           builder: (context, snapshot) {
@@ -416,7 +408,14 @@ class MyRetreatScreen extends StatelessWidget {
                   final facilitator = facilitators[index];
                   return GestureDetector(
                     onTap: () {
-                      // Navigate to facilitator detail screen if exists
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FacilitatorProfileScreen(
+                            facilitator: facilitator,
+                          ),
+                        ),
+                      );
                     },
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
