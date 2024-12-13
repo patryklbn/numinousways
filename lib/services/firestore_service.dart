@@ -10,9 +10,13 @@ class FirestoreService {
   // -------------------------
 
   Stream<List<Facilitator>> getFacilitators() {
-    return _db.collection('facilitators').snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => Facilitator.fromDocument(doc)).toList());
+    return _db
+        .collection('facilitators')
+        .orderBy('order')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => Facilitator.fromDocument(doc)).toList());
   }
+
 
   Future<void> addFacilitator(Facilitator facilitator) {
     return _db.collection('facilitators').add(facilitator.toMap());
