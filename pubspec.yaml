@@ -83,9 +83,9 @@ flutter:
   assets:
     - assets/images/Logo-DEV.png
     - assets/images/onboarding-0.png
-    - assets/images/onboarding-daymodule.png
+    - assets/images/onboarding-1.png
     - assets/images/onboarding-2a.png
-    - assets/images/onboarding-daymodule.png
+    - assets/images/onboarding-3.png
     - assets/images/forgott-password.png
     - assets/default_avatar.png
     - assets/images/myretreat/myretreathero.png
@@ -114,7 +114,6 @@ flutter:
     - assets/images/myretreat/facilitatots/siddique.png
     - assets/images/myretreat/facilitatots/jorge.png
     - assets/images/myretreat/daymodule.png
-    - assets/images/myretreat/2.png
     - assets/images/myretreat/daymodule.png
     - assets/images/myretreat/day_detail_hero.png
 
