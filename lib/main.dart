@@ -11,6 +11,7 @@ import 'screens/profile/edit_profile_screen.dart';
 import 'screens/timeline/timeline_screen.dart';
 import 'screens/my_retreat/my_retreat_screen.dart';
 import 'screens/my_retreat/retreat_info_screen.dart';
+import 'screens/my_retreat/preparation/preparation_course_screen.dart';
 import 'viewmodels/profile_viewmodel.dart';
 import 'services/login_provider.dart';
 import 'services/myretreat_service.dart';
@@ -105,6 +106,7 @@ class MyApp extends StatelessWidget {
             '/edit_profile': (context) => EditProfileScreen(),
             '/my_retreat': (context) => MyRetreatScreen(),
             '/retreat_info': (context) => RetreatInfoScreen(),
+            '/preparation': (context) => PreparationCourseScreen(),
           },
         )
     );
