@@ -9,7 +9,8 @@ import '../../services/myretreat_service.dart';
 import '../../services/login_provider.dart';
 import '../../screens/full_screen_image_viewer.dart';
 import '../login/login_screen.dart';
-import 'facilitator_profile_screen.dart'; // Make sure to import your new FacilitatorProfileScreen
+import '/widgets/app_drawer.dart'; 
+import 'facilitator_profile_screen.dart';
 
 class MyRetreatScreen extends StatelessWidget {
   const MyRetreatScreen({Key? key}) : super(key: key);
@@ -34,6 +35,7 @@ class MyRetreatScreen extends StatelessWidget {
     final myRetreatService = Provider.of<MyRetreatService>(context, listen: false);
 
     return Scaffold(
+      drawer: const AppDrawer(), // Add the drawer
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
@@ -85,7 +87,8 @@ class MyRetreatScreen extends StatelessWidget {
       expandedHeight: 250.0,
       floating: false,
       pinned: true,
-      backgroundColor: Color(0xFFB4347F), // Updated color
+      backgroundColor: Color(0xFFB4347F),
+      // automaticallyImplyLeading defaults to true, so it will show the hamburger menu icon since we have a drawer
       flexibleSpace: FlexibleSpaceBar(
         title: Text(
           'My Retreat',

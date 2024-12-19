@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '/models/daymodule.dart';
 import '/widgets/preparation/daymodule_card.dart';
 import 'day_detail_screen.dart';
+import '/services/login_provider.dart';
+import '/services/preparation_course_service.dart';
 
 class PreparationCourseScreen extends StatefulWidget {
   @override
@@ -12,42 +16,108 @@ class PreparationCourseScreen extends StatefulWidget {
 
 class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
   DateTime? userStartDate;
-  late List<DayModule> allModules;
+  List<DayModule> allModules = [];
+  bool _isLoading = true;
+
+  final PreparationCourseService _prepService = PreparationCourseService(FirebaseFirestore.instance);
+  String? _userId;
 
   @override
   void initState() {
     super.initState();
-    allModules = List.generate(21, (index) => DayModule(
-      dayNumber: index + 1,
-      title: 'Module ${index + 1}',
-      description: 'Description for Module ${index + 1}',
-      isLocked: true,
-      isCompleted: false,
-    ));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _userId = Provider.of<LoginProvider>(context, listen: false).userId;
+      _loadUserData();
+    });
   }
 
-  void _startCourse() {
+  Future<void> _loadUserData() async {
     setState(() {
-      userStartDate = DateTime.now();
+      _isLoading = true;
     });
+
+    // Load user-specific data
+    final userData = await _prepService.getUserPreparationData(_userId!);
+
+    DateTime? start;
+    List<DayModule> userModules = [];
+
+    if (userData != null) {
+      if (userData['startDate'] != null) {
+        start = (userData['startDate'] as Timestamp).toDate();
+      }
+
+      if (userData['modules'] != null && userData['modules'] is List) {
+        for (var m in userData['modules']) {
+          userModules.add(DayModule.fromMap(m));
+        }
+      }
+    }
+
+    // If modules are not initialized in firestore, initialize them
+    if (userModules.isEmpty) {
+      userModules = List.generate(21, (index) => DayModule(
+        dayNumber: index + 1,
+        title: 'Module ${index + 1}',
+        description: 'Description for Module ${index + 1}',
+        isLocked: true,
+        isCompleted: false,
+      ));
+      // Save them to firestore
+      await _prepService.updateModuleState(_userId!, userModules);
+    }
+
+    setState(() {
+      userStartDate = start;
+      allModules = userModules;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _startCourse() async {
+    final now = DateTime.now();
+    setState(() {
+      userStartDate = now;
+    });
+
+    // Save to firestore
+    await _prepService.setUserStartDate(_userId!, now);
+    // Update locking state after start date is set
+    _updateLockingState();
+  }
+
+  void _updateLockingState() {
+    if (userStartDate == null) return;
+
+    final updatedModules = allModules.map((module) {
+      final unlockDate = userStartDate!.add(Duration(days: module.dayNumber - 1));
+      bool isLocked = DateTime.now().isBefore(unlockDate);
+      return module.copyWith(isLocked: isLocked);
+    }).toList();
+
+    setState(() {
+      allModules = updatedModules;
+    });
+
+    // Update in firestore
+    _prepService.updateModuleState(_userId!, allModules);
   }
 
   @override
   Widget build(BuildContext context) {
     final accentColor = Color(0xFFB4347F);
 
-    // Determine if modules are locked/unlocked based on userStartDate
-    final updatedModules = allModules.map((module) {
-      bool isLocked = true;
-      if (userStartDate != null) {
-        final unlockDate = userStartDate!.add(Duration(days: module.dayNumber - 1));
-        isLocked = DateTime.now().isBefore(unlockDate);
-      }
-      return module.copyWith(isLocked: isLocked);
-    }).toList();
+    if (_isLoading) {
+      return Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    final totalModules = updatedModules.length;
-    final completedCount = updatedModules.where((m) => m.isCompleted).length;
+    // Determine current locking state again if userStartDate is known
+    _updateLockingState();
+
+    final totalModules = allModules.length;
+    final completedCount = allModules.where((m) => m.isCompleted).length;
     final progressValue = (userStartDate == null) ? 0.0 : completedCount / totalModules;
 
     return Scaffold(
@@ -130,7 +200,6 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
           ),
           SliverToBoxAdapter(
             child: AnimatedPadding(
-              // Animate padding top from 50 to 20 after userStartDate is not null
               padding: EdgeInsets.fromLTRB(20, userStartDate == null ? 50 : 20, 20, 20),
               duration: Duration(milliseconds: 300),
               curve: Curves.easeInOut,
@@ -164,9 +233,9 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
                   ],
                   AnimationLimiter(
                     child: Column(
-                      children: List.generate(updatedModules.length, (index) {
-                        final module = updatedModules[index];
-                        final isLast = index == updatedModules.length - 1;
+                      children: List.generate(allModules.length, (index) {
+                        final module = allModules[index];
+                        final isLast = index == allModules.length - 1;
                         final heroTag = 'day-${module.dayNumber}-hero';
 
                         return AnimationConfiguration.staggeredList(
@@ -213,14 +282,21 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
                                               ),
                                             );
 
-                                            // If the result is true, mark the module as completed
+                                            // If the result is true, mark the module as completed in state and firestore
                                             if (result == true) {
-                                              setState(() {
-                                                final idx = allModules.indexWhere((m) => m.dayNumber == module.dayNumber);
-                                                if (idx != -1) {
-                                                  allModules[idx] = allModules[idx].copyWith(isCompleted: true);
-                                                }
-                                              });
+                                              final idx = allModules.indexWhere((m) => m.dayNumber == module.dayNumber);
+                                              if (idx != -1) {
+                                                final updatedModule = allModules[idx].copyWith(isCompleted: true);
+                                                allModules[idx] = updatedModule;
+                                                setState(() {});
+                                                // Update Firestore
+                                                await _prepService.updateModuleCompletion(
+                                                    _userId!,
+                                                    module.dayNumber,
+                                                    true,
+                                                    {} // tasks handled in DayDetailScreen
+                                                );
+                                              }
                                             }
                                           }
                                         },
