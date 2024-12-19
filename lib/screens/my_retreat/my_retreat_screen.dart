@@ -9,8 +9,7 @@ import '../../services/myretreat_service.dart';
 import '../../services/login_provider.dart';
 import '../../screens/full_screen_image_viewer.dart';
 import '../login/login_screen.dart';
-import '../profile/profile_screen.dart';
-import '/widgets/app_drawer.dart'; // Make sure AppDrawer is imported
+import '/widgets/app_drawer.dart'; 
 import 'facilitator_profile_screen.dart';
 
 class MyRetreatScreen extends StatelessWidget {
