@@ -12,7 +12,6 @@ class DayModuleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final accentColor = Color(0xFFB4347F);
 
-    // Determine icon based on module state
     IconData iconData;
     Color iconColor = Colors.white;
 
@@ -53,30 +52,13 @@ class DayModuleCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(
-            iconData,
-            color: iconColor,
-          ),
+          Icon(iconData, color: iconColor),
           SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Day ${module.dayNumber}",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        offset: Offset(1, 1),
-                        blurRadius: 3,
-                        color: Colors.black45,
-                      ),
-                    ],
-                  ),
-                ),
+                _buildModuleHeader(),
                 SizedBox(height: 4),
                 Text(
                   module.title,
@@ -108,6 +90,36 @@ class DayModuleCard extends StatelessWidget {
       child: InkWell(
         onTap: module.isLocked ? null : onTap,
         child: content,
+      ),
+    );
+  }
+
+  /// If dayNumber=0 => "Day 0" => maybe show "Before PPS"
+  /// If dayNumber=22 => "Day 22" => maybe show "After PPS"
+  /// else => "Day X"
+  Widget _buildModuleHeader() {
+    String dayLabel;
+    if (module.dayNumber == 0) {
+      dayLabel = "Day 0";
+    } else if (module.dayNumber == 22) {
+      dayLabel = "Day 22";
+    } else {
+      dayLabel = "Day ${module.dayNumber}";
+    }
+
+    return Text(
+      dayLabel,
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+        shadows: [
+          Shadow(
+            offset: Offset(1, 1),
+            blurRadius: 3,
+            color: Colors.black45,
+          ),
+        ],
       ),
     );
   }

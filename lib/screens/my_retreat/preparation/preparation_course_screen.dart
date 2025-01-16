@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '/models/daymodule.dart';
+import '/viewmodels/day_detail_provider.dart';
 import '/widgets/preparation/daymodule_card.dart';
 import 'day_detail_screen.dart';
-import '/services/login_provider.dart';
-import '/services/preparation_course_service.dart';
+import '/screens/my_retreat/preparation/pps_form_screen.dart';
+import 'package:numinous_way/viewmodels/preparation_provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class PreparationCourseScreen extends StatefulWidget {
   @override
@@ -15,309 +15,334 @@ class PreparationCourseScreen extends StatefulWidget {
 }
 
 class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
-  DateTime? userStartDate;
-  List<DayModule> allModules = [];
-  bool _isLoading = true;
-
-  final PreparationCourseService _prepService = PreparationCourseService(FirebaseFirestore.instance);
-  String? _userId;
-
   @override
   void initState() {
     super.initState();
+    // Load the data once, or you could do this in a FutureBuilder
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _userId = Provider.of<LoginProvider>(context, listen: false).userId;
-      _loadUserData();
+      context.read<PreparationProvider>().loadData();
     });
-  }
-
-  Future<void> _loadUserData() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    // Load user-specific data
-    final userData = await _prepService.getUserPreparationData(_userId!);
-
-    DateTime? start;
-    List<DayModule> userModules = [];
-
-    if (userData != null) {
-      if (userData['startDate'] != null) {
-        start = (userData['startDate'] as Timestamp).toDate();
-      }
-
-      if (userData['modules'] != null && userData['modules'] is List) {
-        for (var m in userData['modules']) {
-          userModules.add(DayModule.fromMap(m));
-        }
-      }
-    }
-
-    // If modules are not initialized in firestore, initialize them
-    if (userModules.isEmpty) {
-      userModules = List.generate(21, (index) => DayModule(
-        dayNumber: index + 1,
-        title: 'Module ${index + 1}',
-        description: 'Description for Module ${index + 1}',
-        isLocked: true,
-        isCompleted: false,
-      ));
-      // Save them to firestore
-      await _prepService.updateModuleState(_userId!, userModules);
-    }
-
-    setState(() {
-      userStartDate = start;
-      allModules = userModules;
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _startCourse() async {
-    final now = DateTime.now();
-    setState(() {
-      userStartDate = now;
-    });
-
-    // Save to firestore
-    await _prepService.setUserStartDate(_userId!, now);
-    // Update locking state after start date is set
-    _updateLockingState();
-  }
-
-  void _updateLockingState() {
-    if (userStartDate == null) return;
-
-    final updatedModules = allModules.map((module) {
-      final unlockDate = userStartDate!.add(Duration(days: module.dayNumber - 1));
-      bool isLocked = DateTime.now().isBefore(unlockDate);
-      return module.copyWith(isLocked: isLocked);
-    }).toList();
-
-    setState(() {
-      allModules = updatedModules;
-    });
-
-    // Update in firestore
-    _prepService.updateModuleState(_userId!, allModules);
   }
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = Color(0xFFB4347F);
+    final prepVM = context.watch<PreparationProvider>();
+    final accentColor = const Color(0xFFB4347F);
 
-    if (_isLoading) {
-      return Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    // Determine current locking state again if userStartDate is known
-    _updateLockingState();
-
-    final totalModules = allModules.length;
-    final completedCount = allModules.where((m) => m.isCompleted).length;
-    final progressValue = (userStartDate == null) ? 0.0 : completedCount / totalModules;
-
+    // A pull-to-refresh calls prepVM.loadData()
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
-                  child: Container(
-                    height: 250.0,
-                    color: accentColor,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.asset(
-                          'assets/images/myretreat/preparation.png',
-                          fit: BoxFit.cover,
-                        ),
-                        Container(color: Colors.black.withOpacity(0.3)),
-                        Positioned(
-                          top: 40,
-                          left: 16,
-                          child: IconButton(
-                            icon: Icon(Icons.arrow_back, color: Colors.white),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 30,
-                          left: 20,
-                          right: 20,
-                          child: Text(
-                            "21 Day Preparation",
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(
-                                  offset: Offset(0, 2),
-                                  blurRadius: 4.0,
-                                  color: Colors.black54,
-                                ),
-                              ],
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (userStartDate == null)
-                  Positioned(
-                    bottom: -30,
-                    right: 20,
-                    child: ElevatedButton(
-                      onPressed: _startCourse,
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: accentColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                        elevation: 4,
-                      ),
-                      child: Text(
-                        'Start Course',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: AnimatedPadding(
-              padding: EdgeInsets.fromLTRB(20, userStartDate == null ? 50 : 20, 20, 20),
-              duration: Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: () => prepVM.loadData(),
+        child: CustomScrollView(
+          slivers: [
+            // 1) The hero header + "Start Course" button stack
+            SliverToBoxAdapter(
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  Text(
-                    "Prepare for Your Journey",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: accentColor),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    "Complete this 21-day course with exercises, tasks, and meditations "
-                        "to thoroughly prepare yourself for your upcoming journey. This structured "
-                        "approach ensures you are mentally, emotionally, and spiritually ready.",
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: Colors.black87, height: 1.5),
-                  ),
-                  SizedBox(height: 24),
-                  if (userStartDate != null) ...[
-                    LinearProgressIndicator(
-                      value: progressValue,
-                      backgroundColor: Colors.grey[300],
-                      valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      "$completedCount/$totalModules days completed",
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87),
-                    ),
-                    SizedBox(height: 20),
-                  ],
-                  AnimationLimiter(
-                    child: Column(
-                      children: List.generate(allModules.length, (index) {
-                        final module = allModules[index];
-                        final isLast = index == allModules.length - 1;
-                        final heroTag = 'day-${module.dayNumber}-hero';
-
-                        return AnimationConfiguration.staggeredList(
-                          position: index,
-                          duration: const Duration(milliseconds: 300),
-                          child: SlideAnimation(
-                            verticalOffset: 50.0,
-                            child: FadeInAnimation(
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    child: Column(
-                                      children: [
-                                        if (index > 0) Container(width: 2, height: 20, color: Colors.grey[400]),
-                                        Icon(
-                                          module.isLocked
-                                              ? Icons.lock
-                                              : (module.isCompleted
-                                              ? Icons.check_circle_outline
-                                              : Icons.lock_open_outlined),
-                                          color: module.isLocked
-                                              ? Colors.grey
-                                              : (module.isCompleted ? Colors.green : accentColor),
-                                        ),
-                                        if (!isLast) Container(width: 2, height: 20, color: Colors.grey[400]),
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(left: 8.0, bottom: 16.0),
-                                      child: GestureDetector(
-                                        onTap: () async {
-                                          if (!module.isLocked && userStartDate != null) {
-                                            final result = await Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => DayDetailScreen(
-                                                  dayNumber: module.dayNumber,
-                                                  isDayCompleted: module.isCompleted,
-                                                ),
-                                              ),
-                                            );
-
-                                            // If the result is true, mark the module as completed in state and firestore
-                                            if (result == true) {
-                                              final idx = allModules.indexWhere((m) => m.dayNumber == module.dayNumber);
-                                              if (idx != -1) {
-                                                final updatedModule = allModules[idx].copyWith(isCompleted: true);
-                                                allModules[idx] = updatedModule;
-                                                setState(() {});
-                                                // Update Firestore
-                                                await _prepService.updateModuleCompletion(
-                                                    _userId!,
-                                                    module.dayNumber,
-                                                    true,
-                                                    {} // tasks handled in DayDetailScreen
-                                                );
-                                              }
-                                            }
-                                          }
-                                        },
-                                        child: DayModuleCard(module: module, heroTag: heroTag),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                  _buildHeroHeader(accentColor),
+                  // The button is only shown if user hasn't started
+                  if (prepVM.userStartDate == null &&
+                      !prepVM.hasUserClickedStart)
+                    Positioned(
+                      bottom: -30, // negative offset for overlay
+                      right: 20,
+                      child: ElevatedButton(
+                        onPressed: prepVM.startCourse,
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: accentColor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
                           ),
-                        );
-                      }),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          elevation: 4,
+                        ),
+                        child: const Text(
+                          'Start Course',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
-          ),
-        ],
+
+            // 2) Body content (padding depends on the button presence)
+            SliverToBoxAdapter(
+              child: AnimatedPadding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  (prepVM.userStartDate == null && !prepVM.hasUserClickedStart)
+                      ? 50
+                      : 20,
+                  20,
+                  20,
+                ),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: _buildBodyContent(prepVM, accentColor),
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  /// The top "hero" header that is 250px high, with a background image and back button
+  Widget _buildHeroHeader(Color accentColor) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.only(
+        bottomLeft: Radius.circular(20),
+        bottomRight: Radius.circular(20),
+      ),
+      child: Container(
+        height: 250.0,
+        color: accentColor,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/myretreat/preparation.png',
+              fit: BoxFit.cover,
+            ),
+            Container(color: Colors.black.withOpacity(0.3)),
+            Positioned(
+              top: 40,
+              left: 16,
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            const Positioned(
+              bottom: 30,
+              left: 20,
+              right: 20,
+              child: Text(
+                "21 Day Preparation",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 2),
+                      blurRadius: 4.0,
+                      color: Colors.black54,
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The body content: the introduction text, progress bar, and the modules list
+  Widget _buildBodyContent(PreparationProvider prepVM, Color accentColor) {
+    // Show loading indicator or error
+    if (prepVM.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (prepVM.errorMessage != null) {
+      return Center(
+        child: Text(
+          'Error: ${prepVM.errorMessage}',
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+
+    // If data loaded
+    final modules = prepVM.allModules;
+    final userStartDate = prepVM.userStartDate;
+
+    // Compute progress for days 1..21
+    final mainModules = modules.where((m) =>
+    m.dayNumber >= 1 && m.dayNumber <= 21).toList();
+    final completedCount = mainModules
+        .where((m) => m.isCompleted)
+        .length;
+    const totalModules = 21;
+    final progressValue = completedCount / totalModules;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // "Prepare for Your Journey" heading
+        Text(
+          "Prepare for Your Journey",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: accentColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Original description text
+        const Text(
+          "Complete this 21-day course with exercises, tasks, and meditations "
+              "to thoroughly prepare yourself for your upcoming journey. This structured "
+              "approach ensures you are mentally, emotionally, and spiritually ready.",
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            height: 1.5,
+          ),
+        ),
+
+        const SizedBox(height: 24),
+
+        // Show progress if user has started the course
+        if (userStartDate != null) ...[
+          LinearProgressIndicator(
+            value: progressValue,
+            backgroundColor: Colors.grey[300],
+            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "$completedCount/$totalModules days completed",
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+
+        // List of modules
+        Column(
+          children: modules.map((module) {
+            final isLast = module.dayNumber == modules.last.dayNumber;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // The vertical line & icon timeline
+                SizedBox(
+                  width: 40,
+                  child: Column(
+                    children: [
+                      // If not the first module, show the line above
+                      if (module.dayNumber != modules.first.dayNumber)
+                        Container(
+                          width: 2,
+                          height: 20,
+                          color: Colors.grey[400],
+                        ),
+                      Icon(
+                        module.isLocked
+                            ? Icons.lock
+                            : (module.isCompleted
+                            ? Icons.check_circle_outline
+                            : Icons.lock_open_outlined),
+                        color: module.isLocked
+                            ? Colors.grey
+                            : (module.isCompleted ? Colors.green : accentColor),
+                      ),
+                      // If not the last module, show the line below
+                      if (!isLast)
+                        Container(
+                          width: 2,
+                          height: 20,
+                          color: Colors.grey[400],
+                        ),
+                    ],
+                  ),
+                ),
+                // The day card
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8.0, bottom: 16.0),
+                    child: GestureDetector(
+                      onTap: () => _onModuleTap(prepVM, module),
+                      child: DayModuleCard(module: module),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
+        )
+      ],
+    );
+  }
+
+  /// Called when user taps a module tile in the list
+  Future<void> _onModuleTap(PreparationProvider prepVM,
+      DayModule module) async {
+    if (module.isLocked) return; // do nothing if locked
+
+    // Day 0 => PPS (Before)
+    if (module.dayNumber == 0) {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              PPSFormScreen(
+                isBeforeCourse: true,
+                userId: prepVM.userId,
+              ),
+        ),
+      );
+      if (result == true) {
+        await prepVM.markModuleCompleted(0);
+      }
+      return;
+    }
+
+    // Day 22 => PPS (After)
+    if (module.dayNumber == 22) {
+      final ppsResult = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              PPSFormScreen(
+                isBeforeCourse: false,
+                userId: prepVM.userId,
+              ),
+        ),
+      );
+      if (ppsResult == true) {
+        await prepVM.markModuleCompleted(22);
+      }
+      return;
+    }
+
+// Normal day detail
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            ChangeNotifierProvider<DayDetailProvider>(
+              create: (_) =>
+                  DayDetailProvider(
+                    dayNumber: module.dayNumber,
+                    isDayCompletedInitially: module.isCompleted,
+                    firestoreInstance: FirebaseFirestore.instance,
+                    userId: prepVM.userId!, // Ensure this value is available
+                  ),
+              child: DayDetailScreen(
+                dayNumber: module.dayNumber,
+                isDayCompleted: module.isCompleted,
+              ),
+            ),
+      ),
+    );
+    if (result == true) {
+      await prepVM.markModuleCompleted(module.dayNumber);
+    }
   }
 }
