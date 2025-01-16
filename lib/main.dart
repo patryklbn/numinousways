@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
+
+// Firebase config
 import 'firebase_options.dart';
+
+// Screens
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/login/register_screen.dart';
@@ -12,13 +17,22 @@ import 'screens/timeline/timeline_screen.dart';
 import 'screens/my_retreat/my_retreat_screen.dart';
 import 'screens/my_retreat/retreat_info_screen.dart';
 import 'screens/my_retreat/preparation/preparation_course_screen.dart';
+import 'screens/my_retreat/preparation/day_detail_screen.dart';
+import 'screens/main_app_with_drawer.dart';
+
+// ViewModels / Providers
 import 'viewmodels/profile_viewmodel.dart';
 import 'services/login_provider.dart';
 import 'services/myretreat_service.dart';
 import 'services/firestore_service.dart';
 import 'services/storage_service.dart';
-import 'widgets/app_drawer.dart';
-import 'screens/main_app_with_drawer.dart';
+
+// The Preparation-related imports
+import 'services/preparation_course_service.dart';
+import 'viewmodels/preparation_provider.dart';
+
+// The new day detail provider
+import 'viewmodels/day_detail_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,16 +43,20 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
         ChangeNotifierProvider(create: (_) => LoginProvider()),
-        Provider(create: (_) => MyRetreatService(firestoreService: FirestoreService(),
-          storageService: StorageService(),)), // Add this line
-
+        Provider(
+          create: (_) => MyRetreatService(
+            firestoreService: FirestoreService(),
+            storageService: StorageService(),
+          ),
+        ),
+        // We'll create the PreparationProvider only after the user logs in (see below).
       ],
       child: const MyApp(),
     ),
   );
 }
 
-// Firebase initialization function
+/// Firebase initialization function
 Future<void> initializeFirebase() async {
   try {
     await Firebase.initializeApp(
@@ -56,59 +74,95 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => ProfileViewModel()),
-          ChangeNotifierProvider(create: (_) => LoginProvider()),
-        ],
-        child: MaterialApp(
-          title: 'Your App Name',
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
-            scaffoldBackgroundColor: Color(0xFFEFF3F7),
-            appBarTheme: AppBarTheme(
-              backgroundColor: Colors.blue,
-              titleTextStyle: TextStyle(color: Colors.white, fontSize: 24),
-              iconTheme: IconThemeData(color: Colors.white),
-            ),
-          ),
-          home: Consumer<LoginProvider>(
-            builder: (context, loginProvider, child) {
-              if (loginProvider.isLoggedIn) {
-                print(
-                    "Navigating to TimelineScreen with userId: ${loginProvider
-                        .userId}");
-                return TimelineScreen(); // Do not pass userId
-              } else {
-                print("Navigating to LoginScreen");
-                return LoginScreen();
-              }
-            },
-          ),
-          onGenerateRoute: (settings) {
-            if (settings.name == '/profile_screen') {
-              final args = settings.arguments as Map<String, String>;
-              return MaterialPageRoute(
-                builder: (context) =>
-                    ProfileScreen(
-                      userId: args['userId']!,
-                      loggedInUserId: args['loggedInUserId']!,
-                    ),
-              );
-            }
-            return null; // Default return for undefined routes
-          },
-          routes: {
-            '/onboarding': (context) => OnboardingScreen(),
-            '/register': (context) => RegisterScreen(),
-            '/forgot-password': (context) => ForgotPasswordScreen(),
-            '/timeline': (context) => TimelineScreen(),
-            '/edit_profile': (context) => EditProfileScreen(),
-            '/my_retreat': (context) => MyRetreatScreen(),
-            '/retreat_info': (context) => RetreatInfoScreen(),
-            '/preparation': (context) => PreparationCourseScreen(),
-          },
-        )
+    final loginProvider = context.watch<LoginProvider>();
+
+    // If user NOT logged in, go straight to login flow:
+    if (!loginProvider.isLoggedIn || loginProvider.userId == null) {
+      return MaterialApp(
+        title: 'Your App Name',
+        theme: _buildTheme(),
+        home: const LoginScreen(),
+        routes: {
+          '/onboarding': (context) => OnboardingScreen(),
+          '/register': (context) => RegisterScreen(),
+          '/forgot-password': (context) => ForgotPasswordScreen(),
+        },
+      );
+    }
+
+    // Otherwise, user is logged in => safe to use `userId` in Firestore paths
+    print("Navigating to TimelineScreen with userId: ${loginProvider.userId}");
+
+    // Provide the PreparationProvider for all child widgets:
+    return ChangeNotifierProvider<PreparationProvider>(
+      create: (_) => PreparationProvider(
+        userId: loginProvider.userId!,
+        prepService: PreparationCourseService(FirebaseFirestore.instance),
+      ),
+      child: MaterialApp(
+        title: 'Your App Name',
+        theme: _buildTheme(),
+        home: TimelineScreen(),
+        // We'll define an onGenerateRoute to handle e.g. '/day_detail'.
+        onGenerateRoute: (settings) {
+          // Example: If we do a named push with `Navigator.pushNamed('/day_detail', arguments: {...})`.
+          if (settings.name == '/day_detail') {
+            final args = settings.arguments as Map<String, dynamic>;
+            final int dayNumber = args['dayNumber'] as int;
+            final bool isDayCompleted = args['isDayCompleted'] as bool;
+
+            return MaterialPageRoute(
+              builder: (context) => ChangeNotifierProvider<DayDetailProvider>(
+                create: (_) => DayDetailProvider(
+                  dayNumber: dayNumber,
+                  isDayCompletedInitially: isDayCompleted,
+                  firestoreInstance: FirebaseFirestore.instance,
+                  userId: loginProvider.userId!,
+                ),
+                child: DayDetailScreen(
+                  dayNumber: dayNumber,
+                  isDayCompleted: isDayCompleted,
+                ),
+              ),
+            );
+          }
+
+          // Another route example:
+          if (settings.name == '/profile_screen') {
+            final args = settings.arguments as Map<String, String>;
+            return MaterialPageRoute(
+              builder: (context) => ProfileScreen(
+                userId: args['userId']!,
+                loggedInUserId: args['loggedInUserId']!,
+              ),
+            );
+          }
+
+          return null; // Unknown route => returns null => fallback.
+        },
+        routes: {
+          '/onboarding': (context) => OnboardingScreen(),
+          '/register': (context) => RegisterScreen(),
+          '/forgot-password': (context) => ForgotPasswordScreen(),
+          '/timeline': (context) => TimelineScreen(),
+          '/edit_profile': (context) => EditProfileScreen(),
+          '/my_retreat': (context) => MyRetreatScreen(),
+          '/retreat_info': (context) => RetreatInfoScreen(),
+          '/preparation': (context) => PreparationCourseScreen(),
+        },
+      ),
+    );
+  }
+
+  ThemeData _buildTheme() {
+    return ThemeData(
+      primarySwatch: Colors.blue,
+      scaffoldBackgroundColor: const Color(0xFFEFF3F7),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.blue,
+        titleTextStyle: TextStyle(color: Colors.white, fontSize: 24),
+        iconTheme: IconThemeData(color: Colors.white),
+      ),
     );
   }
 }
