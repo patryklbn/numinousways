@@ -44,29 +44,25 @@ class PreparationCourseService {
 
     final userDoc = firestore.collection('users').doc(userId);
 
-    // Reset preparation data
+    // Overwrite preparation data (do not merge) to reset completions.
     await firestore
         .collection('users')
         .doc(userId)
         .collection('preparationData')
         .doc('data')
         .set({
-      'startDate': FieldValue.delete(), // remove startDate
+      'startDate': null,  // Clear startDate
       'modules': modulesData,
-    }, SetOptions(merge: true));
+    }, SetOptions(merge: false));
 
     // Reset PPS forms by deleting the existing form documents
     final ppsForms = userDoc.collection('ppsForms');
     try {
       await ppsForms.doc('before').delete();
-    } catch (e) {
-      // Document might not exist; handle if necessary
-    }
+    } catch (_) {}
     try {
       await ppsForms.doc('after').delete();
-    } catch (e) {
-      // Document might not exist; handle if necessary
-    }
+    } catch (_) {}
   }
 
   /// Overwrites modules array in Firestore
