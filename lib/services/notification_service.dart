@@ -7,6 +7,12 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
   FlutterLocalNotificationsPlugin();
 
+  // Channel configuration moved to constants for easier customization
+  static const String dailyReminderChannelId = 'daily_reminder_channel';
+  static const String dailyReminderChannelName = 'Daily Reminders';
+  static const String dailyReminderChannelDescription =
+      'Daily reminder to complete course tasks';
+
   Future<void> init() async {
     tz.initializeTimeZones();
 
@@ -20,14 +26,14 @@ class NotificationService {
       requestSoundPermission: true,
     );
 
-    final InitializationSettings initializationSettings =
-    InitializationSettings(
+    final InitializationSettings initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
       iOS: initializationSettingsIOS,
     );
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
+    // Request permissions for Android
     final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
     flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
@@ -35,8 +41,16 @@ class NotificationService {
       await androidImplementation.requestNotificationsPermission();
     }
 
+    // Consolidate iOS permission request inside init()
+    if (Platform.isIOS) {
+      final iosImpl = flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+      await iosImpl?.requestPermissions(alert: true, badge: true, sound: true);
+    }
+
     if (Platform.isAndroid) {
-      print("[NotificationService] If you're on Android 12+, enable 'Alarms & Reminders' permission in system settings.");
+      print(
+          "[NotificationService] If you're on Android 12+, enable 'Alarms & Reminders' permission in system settings.");
     }
   }
 
@@ -49,18 +63,20 @@ class NotificationService {
     required int second,
     required DateTime startDate,
   }) async {
-    print("[NotificationService] Scheduling notification ID: $id at $hour:$minute:$second");
+    print(
+        "[NotificationService] Scheduling notification ID: $id at $hour:$minute:$second");
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'daily_reminder_channel',
-      'Daily Reminders',
-      channelDescription: 'Daily reminder to complete course tasks',
+      dailyReminderChannelId,
+      dailyReminderChannelName,
+      channelDescription: dailyReminderChannelDescription,
       importance: Importance.max,
       priority: Priority.high,
       ongoing: false,
     );
 
-    const NotificationDetails notificationDetails = NotificationDetails(android: androidDetails);
+    const NotificationDetails notificationDetails =
+    NotificationDetails(android: androidDetails);
 
     try {
       await flutterLocalNotificationsPlugin.zonedSchedule(
@@ -70,7 +86,8 @@ class NotificationService {
         _nextInstanceOfTime(hour, minute, second, startDate),
         notificationDetails,
         matchDateTimeComponents: DateTimeComponents.time,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+        uiLocalNotificationDateInterpretation:
+        UILocalNotificationDateInterpretation.absoluteTime,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
       print("[NotificationService] Notification scheduled successfully!");
@@ -79,9 +96,11 @@ class NotificationService {
     }
   }
 
-  tz.TZDateTime _nextInstanceOfTime(int hour, int minute, int second, DateTime startDate) {
+  tz.TZDateTime _nextInstanceOfTime(
+      int hour, int minute, int second, DateTime startDate) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
-    var scheduledDate = tz.TZDateTime(tz.local, startDate.year, startDate.month, startDate.day, hour, minute, second);
+    var scheduledDate = tz.TZDateTime(
+        tz.local, startDate.year, startDate.month, startDate.day, hour, minute, second);
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
