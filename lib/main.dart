@@ -45,15 +45,6 @@ void main() async {
   final notificationService = NotificationService();
   await notificationService.init(); // Initialize notifications here!
 
-  // Request permissions for notifications on iOS
-  final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-      ?.requestPermissions(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
 
   runApp(
     MultiProvider(
