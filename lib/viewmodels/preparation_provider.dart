@@ -218,11 +218,9 @@ class PreparationProvider extends ChangeNotifier {
         }
       }
 
-      final targetCancelHour = 6;
-      if (now.hour < targetCancelHour) {
-        await _notificationService.cancelNotification(dayNumber);
-        print("[PreparationProvider] Notification for Day $dayNumber canceled before 6 AM.");
-      }
+      // Cancel notification for the completed day.
+      await _notificationService.cancelNotification(dayNumber);
+      print("[PreparationProvider] Notification for Day $dayNumber canceled.");
     } catch (e) {
       errorMessage = 'Failed to update module completion: $e';
       notifyListeners();
@@ -277,7 +275,6 @@ class PreparationProvider extends ChangeNotifier {
     }
     return modules;
   }
-
 
   List<DayModule> _generateDefaultModules() {
     final modules = <DayModule>[];
