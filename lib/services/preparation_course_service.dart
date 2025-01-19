@@ -6,135 +6,129 @@ class PreparationCourseService {
 
   PreparationCourseService(this.firestore);
 
-  /// Fetch /users/{userId}/preparationData/data doc
-  Future<Map<String, dynamic>?> getUserPreparationData(String userId) async {
-    final doc = await firestore
+  // Helper to reduce repetition when referencing the preparation data document.
+  DocumentReference<Map<String, dynamic>> _prepDataRef(String userId) {
+    return firestore
         .collection('users')
         .doc(userId)
         .collection('preparationData')
-        .doc('data')
-        .get();
-    if (doc.exists) {
-      return doc.data();
+        .doc('data');
+  }
+
+  /// Fetch /users/{userId}/preparationData/data doc
+  Future<Map<String, dynamic>?> getUserPreparationData(String userId) async {
+    try {
+      final doc = await _prepDataRef(userId).get();
+      return doc.exists ? doc.data() : null;
+    } catch (e) {
+      print("Error fetching preparation data for user $userId: $e");
+      return null;
     }
-    return null;
   }
 
   /// Set or update startDate in Firestore
   Future<void> setUserStartDate(String userId, DateTime startDate) async {
-    await firestore
-        .collection('users')
-        .doc(userId)
-        .collection('preparationData')
-        .doc('data')
-        .set({
-      'startDate': startDate,
-    }, SetOptions(merge: true));
+    try {
+      await _prepDataRef(userId).set({
+        'startDate': startDate,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print("Error setting start date for user $userId: $e");
+    }
   }
 
-  /// Reset everything if date is in future, including PPS forms
+  /// Reset everything if date is in future, including PPS forms.
+  /// This operation atomically resets startDate, modules, and deletes PPS forms using a batch write.
   Future<void> resetStartDateAndModules(String userId, List<DayModule> modules) async {
-    final modulesData = modules.map((m) => {
-      'dayNumber': m.dayNumber,
-      'title': m.title,
-      'description': m.description,
-      'isLocked': m.isLocked,
-      'isCompleted': m.isCompleted,
-    }).toList();
-
-    final userDoc = firestore.collection('users').doc(userId);
-
-    // Reset preparation data
-    await firestore
-        .collection('users')
-        .doc(userId)
-        .collection('preparationData')
-        .doc('data')
-        .set({
-      'startDate': FieldValue.delete(), // remove startDate
-      'modules': modulesData,
-    }, SetOptions(merge: true));
-
-    // Reset PPS forms by deleting the existing form documents
-    final ppsForms = userDoc.collection('ppsForms');
     try {
-      await ppsForms.doc('before').delete();
+      final modulesData = modules.map((m) => m.toMap()).toList();
+      final batch = firestore.batch();
+
+      final prepDataRef = _prepDataRef(userId);
+      final userDoc = firestore.collection('users').doc(userId);
+      final beforeDoc = userDoc.collection('ppsForms').doc('before');
+      final afterDoc = userDoc.collection('ppsForms').doc('after');
+
+      // Overwrite preparation data (do not merge) to reset completions.
+      batch.set(prepDataRef, {
+        'startDate': null,  // Clear startDate
+        'modules': modulesData,
+      }, SetOptions(merge: false));
+
+      // Schedule deletion of PPS forms.
+      batch.delete(beforeDoc);
+      batch.delete(afterDoc);
+
+      // Commit the batch write atomically.
+      await batch.commit();
     } catch (e) {
-      // Document might not exist; handle if necessary
-    }
-    try {
-      await ppsForms.doc('after').delete();
-    } catch (e) {
-      // Document might not exist; handle if necessary
+      print("Error resetting start date and modules for user $userId: $e");
     }
   }
 
   /// Overwrites modules array in Firestore
   Future<void> updateModuleState(String userId, List<DayModule> modules) async {
-    final modulesData = modules.map((m) => {
-      'dayNumber': m.dayNumber,
-      'title': m.title,
-      'description': m.description,
-      'isLocked': m.isLocked,
-      'isCompleted': m.isCompleted,
-    }).toList();
-
-    await firestore
-        .collection('users')
-        .doc(userId)
-        .collection('preparationData')
-        .doc('data')
-        .set({
-      'modules': modulesData,
-    }, SetOptions(merge: true));
+    try {
+      final modulesData = modules.map((m) => m.toMap()).toList();
+      await _prepDataRef(userId).set({
+        'modules': modulesData,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print("Error updating module state for user $userId: $e");
+    }
   }
 
-  /// Updates a single module's completion state & tasks
+  /// Updates a single module's completion state & tasks using a transaction for atomicity.
+  ///
+  /// The [taskCompletion] map should represent the completion state of each task
+  /// within the module, typically structured as { 'taskId': bool }.
   Future<void> updateModuleCompletion(
       String userId,
       int dayNumber,
       bool isCompleted,
       Map<String, bool> taskCompletion,
       ) async {
-    final doc = await firestore
-        .collection('users')
-        .doc(userId)
-        .collection('preparationData')
-        .doc('data')
-        .get();
+    try {
+      await firestore.runTransaction((transaction) async {
+        final docRef = _prepDataRef(userId);
+        final snapshot = await transaction.get(docRef);
+        if (!snapshot.exists) return;
 
-    if (!doc.exists) return;
+        final data = snapshot.data()!;
+        List<dynamic> modulesData = data['modules'] ?? [];
 
-    final data = doc.data()!;
-    List<dynamic> modulesData = data['modules'] ?? [];
-    for (int i = 0; i < modulesData.length; i++) {
-      if (modulesData[i]['dayNumber'] == dayNumber) {
-        modulesData[i]['isCompleted'] = isCompleted;
-        final taskMap = <String, dynamic>{};
-        taskCompletion.forEach((k, v) => taskMap[k] = v);
-        modulesData[i]['tasks'] = taskMap;
-        break;
-      }
+        // Locate the relevant module and update its fields.
+        for (int i = 0; i < modulesData.length; i++) {
+          if (modulesData[i]['dayNumber'] == dayNumber) {
+            modulesData[i]['isCompleted'] = isCompleted;
+            // Expecting tasks structure as a map: { 'taskId': bool, ... }
+            modulesData[i]['tasks'] = Map<String, dynamic>.from(taskCompletion);
+            break;
+          }
+        }
+
+        transaction.update(docRef, {'modules': modulesData});
+      });
+    } catch (e) {
+      print("Error updating module completion for user $userId, day $dayNumber: $e");
     }
-
-    await firestore
-        .collection('users')
-        .doc(userId)
-        .collection('preparationData')
-        .doc('data')
-        .set({'modules': modulesData}, SetOptions(merge: true));
   }
 
   /// Check if user has done PPS form
   Future<bool> hasPPSForm(String userId, bool isBeforeCourse) async {
     final docId = isBeforeCourse ? 'before' : 'after';
-    final doc = await firestore
-        .collection('users')
-        .doc(userId)
-        .collection('ppsForms')
-        .doc(docId)
-        .get();
+    try {
+      final doc = await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('ppsForms')
+          .doc(docId)
+          .get();
 
-    return doc.exists && doc.data() != null && doc.data()!['answers'] != null;
+      return doc.exists && doc.data() != null && doc.data()!['answers'] != null;
+    } catch (e) {
+      print("Error checking PPS form ($docId) for user $userId: $e");
+      return false;
+    }
   }
 }

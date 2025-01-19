@@ -46,6 +46,17 @@
     <key>UIApplicationSupportsIndirectInputEvents</key>
     <true/>
 
+    <!-- Background modes for notifications -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>fetch</string>
+        <string>remote-notification</string>
+    </array>
+
+    <!-- Notification permission description -->
+    <key>NSUserNotificationUsageDescription</key>
+    <string>We need to send you daily reminders to complete your tasks.</string>
+
     <!-- URL Schemes for Google Sign-In -->
     <key>CFBundleURLTypes</key>
     <array>
@@ -54,7 +65,7 @@
             <string>Editor</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>com.googleusercontent.apps.1066286491380-askhrhk22scijs7b84a7692rnh0esq8b</string> <!-- Replace with your REVERSED_CLIENT_ID from GoogleService-Info.plist -->
+                <string>com.googleusercontent.apps.1066286491380-askhrhk22scijs7b84a7692rnh0esq8b</string>
             </array>
         </dict>
     </array>

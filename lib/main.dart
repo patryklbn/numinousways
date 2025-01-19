@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:provider/provider.dart';
 
 // Firebase config
@@ -34,13 +35,21 @@ import 'viewmodels/preparation_provider.dart';
 // The new day detail provider
 import 'viewmodels/day_detail_provider.dart';
 
+import 'package:numinous_way/services/notification_service.dart';
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeFirebase();
 
+  final notificationService = NotificationService();
+  await notificationService.init(); // Initialize notifications here!
+
+
   runApp(
     MultiProvider(
       providers: [
+        Provider<NotificationService>.value(value: notificationService), // Register notification service
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
         ChangeNotifierProvider(create: (_) => LoginProvider()),
         Provider(
@@ -81,8 +90,9 @@ class MyApp extends StatelessWidget {
       return MaterialApp(
         title: 'Your App Name',
         theme: _buildTheme(),
-        home: const LoginScreen(),
+        home: const OnboardingScreen(),  // Show OnboardingScreen
         routes: {
+          '/login': (context) => LoginScreen(),  // Provide a route to login
           '/onboarding': (context) => OnboardingScreen(),
           '/register': (context) => RegisterScreen(),
           '/forgot-password': (context) => ForgotPasswordScreen(),

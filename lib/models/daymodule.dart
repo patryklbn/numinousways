@@ -14,6 +14,16 @@ class DayModule {
     this.isCompleted = false,
   });
 
+  Map<String, dynamic> toMap() {
+    return {
+      'dayNumber': dayNumber,
+      'title': title,
+      'description': description,
+      'isLocked': isLocked,
+      'isCompleted': isCompleted,
+    };
+  }
+
   factory DayModule.fromMap(Map<String, dynamic> map) {
     return DayModule(
       dayNumber: map['dayNumber'] as int,
