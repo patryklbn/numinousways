@@ -6,11 +6,19 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:name="${applicationName}"
         android:label="numinous_way"
         android:icon="@mipmap/ic_launcher">
+
+        <!-- =====================
+     Google Maps API Key
+     ===================== -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyCWgrqgwHhWrQ4p0q6x4TSz6YS8P98skhw" />
 
         <!-- Main activity -->
         <activity
