@@ -37,11 +37,11 @@ jobs:
         run: flutter build apk --release
 
       # Step 6: Upload Android artifact
-      - name: Upload Android artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+     # - name: Upload Android artifact
+      #  uses: actions/upload-artifact@v4
+       # with:
+        #  name: flutter-release-apk
+         # path: build/app/outputs/flutter-apk/app-release.apk
 
   build-ios:
     name: Build iOS IPA
@@ -75,9 +75,9 @@ jobs:
       - name: Build iOS IPA
         run: flutter build ipa --release --no-codesign
 
-      # Step 6: Upload iOS artifact
-      - name: Upload iOS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-release-ipa
-          path: build/ios/ipa
+  #    # Step 6: Upload iOS artifact
+   #   - name: Upload iOS artifact
+     #   uses: actions/upload-artifact@v4
+       # with:
+         # name: flutter-release-ipa
+#         path: build/ios/ipa
