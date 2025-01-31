@@ -24,11 +24,29 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Enable MultiDex in case of dependency issues
+        multiDexEnabled true
+
+        // Ensure only arm64-v8a ABI is used (for your emulator/device)
+        ndk {
+            abiFilters "arm64-v8a"
+        }
     }
 
     buildTypes {
+        debug {
+            minifyEnabled false
+            shrinkResources false
+        }
+
         release {
-            signingConfig = signingConfigs.debug
+            // Enable ProGuard if needed (currently disabled for debugging)
+            minifyEnabled false
+            shrinkResources false
+
+            // Signing config - ensure you have a release signing key
+            signingConfig signingConfigs.debug
         }
     }
 }
@@ -37,5 +55,5 @@ flutter {
     source = "../.."
 }
 
-// Apply Google Services plugin here
+// Apply Google Services plugin
 apply plugin: 'com.google.gms.google-services'
