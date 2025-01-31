@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:numinous_way/services/retreat_service.dart';
 import 'package:provider/provider.dart';
 
 // Firebase config
@@ -20,23 +21,18 @@ import 'screens/my_retreat/retreat_info_screen.dart';
 import 'screens/my_retreat/preparation/preparation_course_screen.dart';
 import 'screens/my_retreat/preparation/day_detail_screen.dart';
 import 'screens/main_app_with_drawer.dart';
+import 'screens/my_retreat/experience/experience_main_screen.dart';
 
 // ViewModels / Providers
-import 'viewmodels/profile_viewmodel.dart';
 import 'services/login_provider.dart';
 import 'services/myretreat_service.dart';
 import 'services/firestore_service.dart';
 import 'services/storage_service.dart';
-
-// The Preparation-related imports
+import 'viewmodels/profile_viewmodel.dart';
+import 'services/notification_service.dart';
 import 'services/preparation_course_service.dart';
 import 'viewmodels/preparation_provider.dart';
-
-// The new day detail provider
 import 'viewmodels/day_detail_provider.dart';
-
-import 'package:numinous_way/services/notification_service.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,27 +41,30 @@ void main() async {
   final notificationService = NotificationService();
   await notificationService.init(); // Initialize notifications here!
 
-
   runApp(
     MultiProvider(
       providers: [
-        Provider<NotificationService>.value(value: notificationService), // Register notification service
+        // Notification Service
+        Provider<NotificationService>.value(value: notificationService),
+        // Profile View
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+        // Login Provider
         ChangeNotifierProvider(create: (_) => LoginProvider()),
+        // MyRetreat Service
         Provider(
           create: (_) => MyRetreatService(
             firestoreService: FirestoreService(),
             storageService: StorageService(),
           ),
         ),
-        // We'll create the PreparationProvider only after the user logs in (see below).
+        // We'll create the PreparationProvider only after user logs in (below).
       ],
       child: const MyApp(),
     ),
   );
 }
 
-/// Firebase initialization function
+/// Firebase initialization
 Future<void> initializeFirebase() async {
   try {
     await Firebase.initializeApp(
@@ -85,14 +84,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final loginProvider = context.watch<LoginProvider>();
 
-    // If user NOT logged in, go straight to login flow:
+    // If user NOT logged in => go to Onboarding
     if (!loginProvider.isLoggedIn || loginProvider.userId == null) {
       return MaterialApp(
         title: 'Your App Name',
         theme: _buildTheme(),
-        home: const OnboardingScreen(),  // Show OnboardingScreen
+        home: const OnboardingScreen(),
         routes: {
-          '/login': (context) => LoginScreen(),  // Provide a route to login
+          '/login': (context) => LoginScreen(),
           '/onboarding': (context) => OnboardingScreen(),
           '/register': (context) => RegisterScreen(),
           '/forgot-password': (context) => ForgotPasswordScreen(),
@@ -100,10 +99,10 @@ class MyApp extends StatelessWidget {
       );
     }
 
-    // Otherwise, user is logged in => safe to use `userId` in Firestore paths
+    // If user is logged in => go to main flow
     print("Navigating to TimelineScreen with userId: ${loginProvider.userId}");
 
-    // Provide the PreparationProvider for all child widgets:
+    // Provide the PreparationProvider for all child widgets
     return ChangeNotifierProvider<PreparationProvider>(
       create: (_) => PreparationProvider(
         userId: loginProvider.userId!,
@@ -113,9 +112,7 @@ class MyApp extends StatelessWidget {
         title: 'Your App Name',
         theme: _buildTheme(),
         home: TimelineScreen(),
-        // We'll define an onGenerateRoute to handle e.g. '/day_detail'.
         onGenerateRoute: (settings) {
-          // Example: If we do a named push with `Navigator.pushNamed('/day_detail', arguments: {...})`.
           if (settings.name == '/day_detail') {
             final args = settings.arguments as Map<String, dynamic>;
             final int dayNumber = args['dayNumber'] as int;
@@ -148,7 +145,7 @@ class MyApp extends StatelessWidget {
             );
           }
 
-          return null; // Unknown route => returns null => fallback.
+          return null; // Unknown route => null => fallback
         },
         routes: {
           '/onboarding': (context) => OnboardingScreen(),
@@ -159,6 +156,7 @@ class MyApp extends StatelessWidget {
           '/my_retreat': (context) => MyRetreatScreen(),
           '/retreat_info': (context) => RetreatInfoScreen(),
           '/preparation': (context) => PreparationCourseScreen(),
+          '/experience': (context) => ExperienceMainScreen(),
         },
       ),
     );
