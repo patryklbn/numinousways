@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../models/facilitator.dart';
 import '../models/venue.dart';
 import 'firestore_service.dart';
@@ -123,4 +125,14 @@ class MyRetreatService {
 
     await _firestoreService.deleteVenue(venueId);
   }
+
+  Future<Venue?> getVenueById(String venueId) async {
+    final docSnap = await FirebaseFirestore.instance
+        .collection('venues')
+        .doc(venueId)
+        .get();
+    if (!docSnap.exists) return null;
+    return Venue.fromDocument(docSnap);
+  }
+
 }
