@@ -9,7 +9,7 @@ import '../../services/myretreat_service.dart';
 import '../../services/login_provider.dart';
 import '../../screens/full_screen_image_viewer.dart';
 import '../login/login_screen.dart';
-import '/widgets/app_drawer.dart'; 
+import '/widgets/app_drawer.dart';
 import 'facilitator_profile_screen.dart';
 
 class MyRetreatScreen extends StatelessWidget {
@@ -23,10 +23,10 @@ class MyRetreatScreen extends StatelessWidget {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => LoginScreen()),
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
         );
       });
-      return Scaffold(
+      return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
@@ -35,7 +35,8 @@ class MyRetreatScreen extends StatelessWidget {
     final myRetreatService = Provider.of<MyRetreatService>(context, listen: false);
 
     return Scaffold(
-      drawer: const AppDrawer(), // Add the drawer
+      backgroundColor: Colors.white,
+      drawer: const AppDrawer(), // side menu
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
@@ -50,9 +51,9 @@ class MyRetreatScreen extends StatelessWidget {
                     childAnimationBuilder: (widget) => FadeInAnimation(child: widget),
                     children: [
                       _buildIntroText(context),
-                      SizedBox(height: 24),
+                      const SizedBox(height: 24),
                       _buildFeatureCards(context),
-                      SizedBox(height: 32),
+                      const SizedBox(height: 32),
                       _buildVenuesSection(
                         'Portugal',
                         context,
@@ -60,7 +61,7 @@ class MyRetreatScreen extends StatelessWidget {
                         myRetreatService,
                         currentUserId,
                       ),
-                      SizedBox(height: 32),
+                      const SizedBox(height: 32),
                       _buildVenuesSection(
                         'Netherlands',
                         context,
@@ -68,9 +69,9 @@ class MyRetreatScreen extends StatelessWidget {
                         myRetreatService,
                         currentUserId,
                       ),
-                      SizedBox(height: 32),
+                      const SizedBox(height: 32),
                       _buildFacilitatorsSection(context, myRetreatService, currentUserId),
-                      SizedBox(height: 32),
+                      const SizedBox(height: 32),
                     ],
                   ),
                 ),
@@ -87,10 +88,9 @@ class MyRetreatScreen extends StatelessWidget {
       expandedHeight: 250.0,
       floating: false,
       pinned: true,
-      backgroundColor: Color(0xFFB4347F),
-      // automaticallyImplyLeading defaults to true, so it will show the hamburger menu icon since we have a drawer
+      backgroundColor: const Color(0xFFB4347F),
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(
+        title: const Text(
           'My Retreat',
           style: TextStyle(
             color: Colors.white,
@@ -119,7 +119,7 @@ class MyRetreatScreen extends StatelessWidget {
   }
 
   Widget _buildIntroText(BuildContext context) {
-    return Text(
+    return const Text(
       'At Numinous Way, our retreats seamlessly guide you through essential preparation, immersive experiences, and mindful integration. With curated tasks, transformative exercises, and supportive environments, we create a nurturing space for profound personal growth and self-discovery.',
       style: TextStyle(
         fontSize: 14,
@@ -143,9 +143,9 @@ class MyRetreatScreen extends StatelessWidget {
     double horizontalPadding = 16 * 2;
     double availableWidth = screenWidth - horizontalPadding;
 
-    String prepDescription = '21-day checklist & tasks';
-    String expDescription = 'Schedule & feedback';
-    String intDescription = 'Mindfulness tools';
+    const prepDescription = '21-day checklist & tasks';
+    const expDescription = 'Schedule & feedback';
+    const intDescription = 'Mindfulness tools';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -163,7 +163,7 @@ class MyRetreatScreen extends StatelessWidget {
                   width: double.infinity,
                 ),
               ),
-              SizedBox(width: 16),
+              const SizedBox(width: 16),
               Expanded(
                 child: _buildFeatureCard(
                   context: context,
@@ -177,7 +177,7 @@ class MyRetreatScreen extends StatelessWidget {
             ],
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         _buildFeatureCard(
           context: context,
           icon: Icons.self_improvement,
@@ -200,6 +200,7 @@ class MyRetreatScreen extends StatelessWidget {
     required double width,
     bool isLarge = false,
   }) {
+    // Use different background images for each card
     String backgroundImage;
     if (title == 'Preparation') {
       backgroundImage = 'assets/images/myretreat/preparation.png';
@@ -219,11 +220,11 @@ class MyRetreatScreen extends StatelessWidget {
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, routeName),
       child: Container(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(isLarge ? 16 : 12),
-          boxShadow: [BoxShadow(blurRadius: 6, color: Colors.black12)],
+          boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black12)],
           image: backgroundImage.isNotEmpty
               ? DecorationImage(
             image: AssetImage(backgroundImage),
@@ -251,7 +252,7 @@ class MyRetreatScreen extends StatelessWidget {
                 fontSize: titleFontSize,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                shadows: [
+                shadows: const [
                   Shadow(
                     offset: Offset(1, 1),
                     blurRadius: 2,
@@ -261,14 +262,14 @@ class MyRetreatScreen extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: 8),
             Text(
               description,
               style: TextStyle(
                 fontSize: descriptionFontSize,
                 color: Colors.white.withOpacity(0.95),
                 fontWeight: FontWeight.w500,
-                shadows: [
+                shadows: const [
                   Shadow(
                     offset: Offset(1, 1),
                     blurRadius: 2,
@@ -286,33 +287,43 @@ class MyRetreatScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVenuesSection(String title, BuildContext context, String description, MyRetreatService service, String currentUserId) {
+  /// Build a section to preview a venue
+  /// We'll show only the first 5 images from `venue.images` in a horizontal list
+  Widget _buildVenuesSection(
+      String title,
+      BuildContext context,
+      String description,
+      MyRetreatService service,
+      String currentUserId,
+      ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
           description,
           style: TextStyle(fontSize: 14, color: Colors.grey[700]),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         StreamBuilder<List<Venue>>(
           stream: service.getVenues(currentUserId),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              return Text('Error fetching venues');
+              return const Text('Error fetching venues');
             }
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CircularProgressIndicator();
+              return const CircularProgressIndicator();
             }
 
             final venues = snapshot.data!;
-            final filteredVenues = venues.where((venue) => venue.name.toLowerCase() == title.toLowerCase()).toList();
+            final filteredVenues = venues
+                .where((venue) => venue.name.toLowerCase() == title.toLowerCase())
+                .toList();
 
             if (filteredVenues.isEmpty) {
               return Text('No $title venues available');
@@ -320,14 +331,19 @@ class MyRetreatScreen extends StatelessWidget {
 
             final venue = filteredVenues.first;
 
+            // Only show first 5 images
+            final displayedImages = venue.images.length > 5
+                ? venue.images.sublist(0, 5)
+                : venue.images;
+
             return SizedBox(
               height: 120,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: venue.images.length,
-                separatorBuilder: (context, index) => SizedBox(width: 16),
+                itemCount: displayedImages.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
-                  final imageUrl = venue.images[index];
+                  final imageUrl = displayedImages[index];
                   return GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -350,13 +366,13 @@ class MyRetreatScreen extends StatelessWidget {
                             width: 150,
                             height: 120,
                             color: Colors.grey[300],
-                            child: Center(child: CircularProgressIndicator()),
+                            child: const Center(child: CircularProgressIndicator()),
                           ),
                           errorWidget: (context, url, error) => Container(
                             width: 150,
                             height: 120,
                             color: Colors.grey[300],
-                            child: Icon(Icons.error),
+                            child: const Icon(Icons.error),
                           ),
                           width: 150,
                           height: 120,
@@ -374,29 +390,33 @@ class MyRetreatScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFacilitatorsSection(BuildContext context, MyRetreatService service, String currentUserId) {
+  Widget _buildFacilitatorsSection(
+      BuildContext context,
+      MyRetreatService service,
+      String currentUserId,
+      ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Meet Our Team',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
           'Expert facilitators here to support you.',
           style: TextStyle(fontSize: 14, color: Colors.grey[700]),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         StreamBuilder<List<Facilitator>>(
           stream: service.getFacilitators(currentUserId),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
-              return Text('Error fetching facilitators');
+              return const Text('Error fetching facilitators');
             }
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CircularProgressIndicator();
+              return const CircularProgressIndicator();
             }
 
             final facilitators = snapshot.data!;
@@ -406,7 +426,7 @@ class MyRetreatScreen extends StatelessWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: facilitators.length,
-                separatorBuilder: (context, index) => SizedBox(width: 16),
+                separatorBuilder: (context, index) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
                   final facilitator = facilitators[index];
                   return GestureDetector(
@@ -426,17 +446,22 @@ class MyRetreatScreen extends StatelessWidget {
                         CircleAvatar(
                           radius: 40,
                           backgroundColor: Colors.grey[200],
-                          backgroundImage: CachedNetworkImageProvider(facilitator.photoUrl),
+                          backgroundImage: CachedNetworkImageProvider(
+                            facilitator.photoUrl,
+                          ),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         Text(
                           facilitator.name,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
                           facilitator.role,
                           style: TextStyle(fontSize: 11, color: Colors.grey[600]),
