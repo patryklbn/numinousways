@@ -4,12 +4,14 @@ class Venue {
   final String id;
   final String name;
   final String description;
+  final List<String> detailedDescription;
   final List<String> images;
 
   Venue({
     required this.id,
     required this.name,
     required this.description,
+    required this.detailedDescription,
     required this.images,
   });
 
@@ -20,6 +22,7 @@ class Venue {
       id: doc.id,
       name: data['name'] ?? '',
       description: data['description'] ?? '',
+      detailedDescription: List<String>.from(data['detailedDescription'] ?? []),
       images: List<String>.from(data['images'] ?? []),
     );
   }
@@ -29,6 +32,7 @@ class Venue {
     return {
       'name': name,
       'description': description,
+      'detailedDescription': detailedDescription,
       'images': images,
     };
   }
