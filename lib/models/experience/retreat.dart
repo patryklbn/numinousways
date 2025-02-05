@@ -5,6 +5,11 @@ class Retreat {
   final String title;
   final List<String> shortDescription;
   final List<String> detailedDescription;
+  final String mushroomTitle;
+  final List<String> mushroomDescription;
+  final String truffleTitle;
+  final List<String> truffleDescription;
+  final List<String> spotifyLinks;
   final String location;
   final String? cardImageUrl;
   final DateTime startDate;
@@ -28,15 +33,19 @@ class Retreat {
   final List<String> travelDescription;
   final List<String> meetingLocation;
   final List<String> returnLocation;
-
-  // NEW: retreatAddress field (e.g. lines for street, city, etc.)
   final List<String> retreatAddress;
+  final List<String> transportationRequest;
 
   Retreat({
     required this.id,
     required this.title,
     required this.shortDescription,
     required this.detailedDescription,
+    required this.mushroomDescription,
+    required this.mushroomTitle,
+    this.truffleTitle = '',
+    this.truffleDescription = const [],
+    required this.spotifyLinks,
     required this.location,
     this.cardImageUrl,
     required this.startDate,
@@ -53,11 +62,12 @@ class Retreat {
     this.latitude,
     this.longitude,
 
-    // travel
+    // Travel & address
     this.travelDescription = const [],
     this.meetingLocation = const [],
     this.returnLocation = const [],
     this.retreatAddress = const [],
+    this.transportationRequest = const [],
   });
 
   factory Retreat.fromDocument(DocumentSnapshot doc) {
@@ -67,6 +77,11 @@ class Retreat {
       title: data['title'] ?? '',
       shortDescription: List<String>.from(data['shortDescription'] ?? []),
       detailedDescription: List<String>.from(data['detailedDescription'] ?? []),
+      mushroomDescription: List<String>.from(data['mushroomDescription'] ?? []),
+      mushroomTitle: data['mushroomTitle'] ?? '',
+      truffleTitle: data['truffleTitle'] ?? '',
+      truffleDescription: List<String>.from(data['truffleDescription'] ?? []),
+      spotifyLinks: List<String>.from(data['spotifyLinks'] ?? []),
       location: data['location'] ?? '',
       cardImageUrl: data['cardImageUrl'],
       startDate: data['startDate'] != null
@@ -98,6 +113,7 @@ class Retreat {
       meetingLocation: List<String>.from(data['meetingLocation'] ?? []),
       returnLocation: List<String>.from(data['returnLocation'] ?? []),
       retreatAddress: List<String>.from(data['retreatAddress'] ?? []),
+      transportationRequest: List<String>.from(data['transportationRequest'] ?? []),
     );
   }
 
@@ -106,6 +122,11 @@ class Retreat {
       'title': title,
       'shortDescription': shortDescription,
       'detailedDescription': detailedDescription,
+      'mushroomDescription': mushroomDescription,
+      'mushroomTitle': mushroomTitle,
+      'truffleTitle': truffleTitle,
+      'truffleDescription': truffleDescription,
+      'spotifyLinks': spotifyLinks,
       'location': location,
       'cardImageUrl': cardImageUrl,
       'startDate': startDate,
@@ -126,6 +147,7 @@ class Retreat {
       'meetingLocation': meetingLocation,
       'returnLocation': returnLocation,
       'retreatAddress': retreatAddress,
+      'transportationRequest': transportationRequest,
     };
   }
 }
