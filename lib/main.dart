@@ -57,7 +57,8 @@ void main() async {
             storageService: StorageService(),
           ),
         ),
-        // We'll create the PreparationProvider only after user logs in (below).
+        // Retreat Service provider
+        Provider<RetreatService>(create: (_) => RetreatService()),
       ],
       child: const MyApp(),
     ),
