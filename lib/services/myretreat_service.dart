@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../models/facilitator.dart';
 import '../models/venue.dart';
 import 'firestore_service.dart';
@@ -20,12 +19,21 @@ class MyRetreatService {
   // -------------------------
   // Facilitator Methods
   // -------------------------
+
+  /// Returns a stream of all facilitators (no user-based filtering)
   Stream<List<Facilitator>> getFacilitators(String currentUserId) {
     return _firestoreService.getFacilitators();
   }
 
-  Future<void> addFacilitator(Facilitator facilitator, File photoFile, String currentUserId) async {
-    String photoUrl = await _storageService.uploadFacilitatorPhoto(photoFile, facilitator.name.replaceAll(' ', '_'));
+  Future<void> addFacilitator(
+      Facilitator facilitator,
+      File photoFile,
+      String currentUserId,
+      ) async {
+    String photoUrl = await _storageService.uploadFacilitatorPhoto(
+      photoFile,
+      facilitator.name.replaceAll(' ', '_'),
+    );
 
     Facilitator newFacilitator = Facilitator(
       id: '',
@@ -37,7 +45,11 @@ class MyRetreatService {
     await _firestoreService.addFacilitator(newFacilitator);
   }
 
-  Future<void> updateFacilitator(Facilitator facilitator, {File? newPhotoFile, required String currentUserId}) async {
+  Future<void> updateFacilitator(
+      Facilitator facilitator, {
+        File? newPhotoFile,
+        required String currentUserId,
+      }) async {
     String updatedPhotoUrl = facilitator.photoUrl;
 
     if (newPhotoFile != null) {
@@ -65,11 +77,18 @@ class MyRetreatService {
   // -------------------------
   // Venue Methods
   // -------------------------
+
+  /// Returns a stream of all venues (no user-based filtering).
   Stream<List<Venue>> getVenues(String currentUserId) {
     return _firestoreService.getVenues();
   }
 
-  Future<void> addVenue(Venue venue, List<File> imageFiles, String currentUserId) async {
+  /// Add a new venue + image files
+  Future<void> addVenue(
+      Venue venue,
+      List<File> imageFiles,
+      String currentUserId,
+      ) async {
     List<String> imageUrls = [];
 
     for (int i = 0; i < imageFiles.length; i++) {
@@ -82,19 +101,30 @@ class MyRetreatService {
       imageUrls.add(imageUrl);
     }
 
+    // Build the new Venue with updated images, while preserving
+    // description and detailedDescription
     Venue newVenue = Venue(
       id: '',
       name: venue.name,
       description: venue.description,
+      detailedDescription: venue.detailedDescription,
       images: imageUrls,
     );
 
+    // Then use your FirestoreService to add it
     await _firestoreService.addVenue(newVenue);
   }
 
-  Future<void> updateVenue(Venue venue, {List<File>? newImageFiles, required String currentUserId}) async {
-    List<String> updatedImageUrls = venue.images;
+  /// Update an existing venue
+  Future<void> updateVenue(
+      Venue venue, {
+        List<File>? newImageFiles,
+        required String currentUserId,
+      }) async {
+    // Start with the existing images
+    List<String> updatedImageUrls = List.from(venue.images);
 
+    // If there are new image files, upload them
     if (newImageFiles != null && newImageFiles.isNotEmpty) {
       for (int i = 0; i < newImageFiles.length; i++) {
         String imageName = '${venue.name.replaceAll(' ', '_')}_new_$i';
@@ -107,25 +137,32 @@ class MyRetreatService {
       }
     }
 
+    // Rebuild the Venue with updated images
     Venue updatedVenue = Venue(
       id: venue.id,
       name: venue.name,
       description: venue.description,
+      detailedDescription: venue.detailedDescription,
       images: updatedImageUrls,
     );
 
+    // Then update in Firestore
     await _firestoreService.updateVenue(updatedVenue);
   }
 
+  /// Delete a venue + all stored images from Firebase Storage
   Future<void> deleteVenue(String venueId, List<String> imageUrls, String currentUserId) async {
+    // 1) delete images from storage
     for (String imageUrl in imageUrls) {
       Reference ref = FirebaseStorage.instance.refFromURL(imageUrl);
       await ref.delete();
     }
 
+    // 2) remove doc from 'venues'
     await _firestoreService.deleteVenue(venueId);
   }
 
+  /// Fetch a single venue by ID
   Future<Venue?> getVenueById(String venueId) async {
     final docSnap = await FirebaseFirestore.instance
         .collection('venues')
@@ -134,5 +171,4 @@ class MyRetreatService {
     if (!docSnap.exists) return null;
     return Venue.fromDocument(docSnap);
   }
-
 }
