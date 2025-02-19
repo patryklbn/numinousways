@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
 import '../services/retreat_service.dart';
-import '../models/experience/retreat.dart';
 import '../models/experience/participant.dart';
 
-/// ExperienceProvider handles retreat-specific logic, such as:
-///  - Checking if the current user is enrolled
-///  - Possibly loading additional retreat data or participants
+/// ExperienceProvider handles retreat-specific logic, such as checking enrollment
+/// and fetching participant data.
 class ExperienceProvider extends ChangeNotifier {
   final RetreatService _retreatService;
-  final String? userId;  // The current logged-in user's ID
+  final String? userId;
 
   ExperienceProvider({
     required RetreatService retreatService,
     required this.userId,
   }) : _retreatService = retreatService;
 
-  /// Check if the user is enrolled in a specific retreat
+  /// Check if the user is enrolled in a specific retreat.
   Future<bool> checkEnrollment(String retreatId) async {
-    // If user is not logged in, definitely not enrolled
     if (userId == null) return false;
+    return await _retreatService.isUserEnrolled(retreatId, userId!);
+  }
 
-    final isEnrolled = await _retreatService.isUserEnrolled(retreatId, userId!);
-    return isEnrolled;
+  /// Retrieve the participant record for the current user in the given retreat.
+  Future<Participant?> fetchParticipant(String retreatId) async {
+    if (userId == null) return null;
+    return await _retreatService.getParticipant(retreatId, userId!);
+  }
+  /// Updates the participant record to indicate that MEQ consent has been given.
+  Future<Participant> updateMEQConsent(String retreatId, Participant participant) async {
+    final updated = participant.copyWith(meqConsent: true);
+    await _retreatService.addOrUpdateParticipant(retreatId, updated);
+    return updated;
   }
 }
