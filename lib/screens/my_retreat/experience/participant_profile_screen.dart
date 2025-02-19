@@ -14,16 +14,27 @@ class ParticipantProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Match AboutMeScreen's white background
+      // White background as before.
       backgroundColor: Colors.white,
       appBar: AppBar(
-        // Match AboutMeScreen's AppBar color
-        backgroundColor: const Color(0xFFB4347F),
+        // Set the backgroundColor to transparent and use flexibleSpace for the gradient.
+        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: Text(
           participant.name,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+          style: GoogleFonts.roboto(
+            textStyle: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         centerTitle: true,
@@ -32,11 +43,11 @@ class ParticipantProfileScreen extends StatelessWidget {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
-          // Make sure all content is left-aligned
+          // All content left-aligned.
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Participant Image
+              // Participant Image.
               Center(
                 child: participant.photoUrl != null
                     ? Hero(
@@ -71,11 +82,11 @@ class ParticipantProfileScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              // Participant Name (centered for emphasis)
+              // Participant Name (centered for emphasis).
               Center(
                 child: Text(
                   participant.name,
-                  style: GoogleFonts.lato(
+                  style: GoogleFonts.roboto(
                     textStyle: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -86,52 +97,18 @@ class ParticipantProfileScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // Display profile fields only if they are not empty
-              _buildProfileField(
-                "SHARE A BIT ABOUT YOURSELF",
-                participant.aboutYourself,
-              ),
-              _buildProfileField(
-                "HOW WOULD YOU LIKE PEOPLE TO CALL YOU",
-                participant.nickname,
-              ),
-              _buildProfileField(
-                "PREFERRED PRONOUNS",
-                participant.pronouns,
-              ),
-              _buildProfileField(
-                "WHAT KIND OF WORK HAVE YOU DONE/DO YOU DO",
-                participant.work,
-              ),
-              _buildProfileField(
-                "WHAT KIND OF THINGS DO YOU ENJOY DOING IN YOUR SPARE TIME",
-                participant.hobbies,
-              ),
-              _buildProfileField(
-                "WHAT, IF ANY, PSYCHEDELIC EXPERIENCE DO YOU HAVE",
-                participant.psychedelicExperience,
-              ),
-              _buildProfileField(
-                "WHAT ELSE WOULD BE HELPFUL FOR PEOPLE TO KNOW ABOUT YOU",
-                participant.additionalInfo,
-              ),
-              _buildProfileField(
-                "WHAT ANIMAL, IF ANY, DO YOU FEEL MOST CONNECTED TO/DO YOU FEEL BEST REPRESENTS YOU",
-                participant.favoriteAnimal,
-              ),
-              _buildProfileField(
-                "WHAT’S YOUR EARLIEST MEMORY",
-                participant.earliestMemory,
-              ),
-              _buildProfileField(
-                "TELL US ABOUT SOMETHING YOU LOVE",
-                participant.somethingYouLove,
-              ),
-              _buildProfileField(
-                "TELL US ABOUT SOMETHING WHICH YOU FIND DIFFICULT",
-                participant.somethingDifficult,
-              ),
+              // Display profile fields only if they are not empty.
+              _buildProfileField("SHARE A BIT ABOUT YOURSELF", participant.aboutYourself),
+              _buildProfileField("HOW WOULD YOU LIKE PEOPLE TO CALL YOU", participant.nickname),
+              _buildProfileField("PREFERRED PRONOUNS", participant.pronouns),
+              _buildProfileField("WHAT KIND OF WORK HAVE YOU DONE/DO YOU DO", participant.work),
+              _buildProfileField("WHAT KIND OF THINGS DO YOU ENJOY DOING IN YOUR SPARE TIME", participant.hobbies),
+              _buildProfileField("WHAT, IF ANY, PSYCHEDELIC EXPERIENCE DO YOU HAVE", participant.psychedelicExperience),
+              _buildProfileField("WHAT ELSE WOULD BE HELPFUL FOR PEOPLE TO KNOW ABOUT YOU", participant.additionalInfo),
+              _buildProfileField("WHAT ANIMAL, IF ANY, DO YOU FEEL MOST CONNECTED TO/DO YOU FEEL BEST REPRESENTS YOU", participant.favoriteAnimal),
+              _buildProfileField("WHAT’S YOUR EARLIEST MEMORY", participant.earliestMemory),
+              _buildProfileField("TELL US ABOUT SOMETHING YOU LOVE", participant.somethingYouLove),
+              _buildProfileField("TELL US ABOUT SOMETHING WHICH YOU FIND DIFFICULT", participant.somethingDifficult),
             ],
           ),
         ),
@@ -140,18 +117,17 @@ class ParticipantProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileField(String label, String value) {
-    // Hide field if value is empty
+    // Hide the field if the value is empty.
     if (value.trim().isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 26.0),
-      // All text left-aligned
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: GoogleFonts.lato(
+            style: GoogleFonts.roboto(
               textStyle: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -163,7 +139,7 @@ class ParticipantProfileScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: GoogleFonts.openSans(
+            style: GoogleFonts.roboto(
               textStyle: TextStyle(
                 fontSize: 16,
                 color: Colors.grey[800],
