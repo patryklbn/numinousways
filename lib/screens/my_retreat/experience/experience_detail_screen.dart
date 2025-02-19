@@ -4,21 +4,26 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../models/experience/retreat.dart';
 import '../../../models/experience/participant.dart';
 import '../../../models/venue.dart';
+import '../../../models/facilitator.dart';
 import '../../../services/myretreat_service.dart';
 import '../../../services/login_provider.dart';
 import '../../../services/retreat_service.dart';
 import '../../../widgets/experience/small_map_widget.dart';
 import '../../full_screen_image_viewer.dart';
+
+import '../facilitator_profile_screen.dart';
 import 'about_me_screen.dart';
 import 'participant_profile_screen.dart';
-import 'travel_details_screen.dart'; // For "Submit Travel Details" button
-
-import './psychedelic_order_screen.dart';
+import 'travel_details_screen.dart';
+import 'psychedelic_order_screen.dart';
+import 'meq30_screen.dart';
+import 'feedback_screen.dart';
+import '../../../viewmodels/experience_provider.dart';
 
 class ExperienceDetailScreen extends StatefulWidget {
   final Retreat retreat;
@@ -35,8 +40,8 @@ class ExperienceDetailScreen extends StatefulWidget {
 }
 
 class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
-  bool _meqConsentDialogAccepted = false;
-  late Participant _currentParticipant; // Local copy to update dynamically
+  late Participant _currentParticipant;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -47,99 +52,224 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final retreat = widget.retreat;
-    final participant = _currentParticipant; // Reflect changes from AboutMeScreen
+    final participant = _currentParticipant;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(retreat.title),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1) Title
-            Text(
-              'Your Journey',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+      backgroundColor: Colors.white,
+      body: CustomScrollView(
+        controller: _scrollController,
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // SliverAppBar with fade gradient and overlays for text clarity.
+          SliverAppBar(
+            expandedHeight: 250.0,
+            pinned: true,
+            floating: false,
+            backgroundColor: Colors.transparent,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            flexibleSpace: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final double maxAppBarHeight = 250.0;
+                final double minAppBarHeight =
+                    kToolbarHeight + MediaQuery.of(context).padding.top;
+                final double currentHeight = constraints.biggest.height;
+                final double t = ((currentHeight - minAppBarHeight) /
+                    (maxAppBarHeight - minAppBarHeight))
+                    .clamp(0.0, 1.0);
+                final double fadeFactor = 1.0 - t;
+
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Hero image
+                    Hero(
+                      tag: retreat.cardImageUrl ?? '',
+                      child: (retreat.cardImageUrl != null &&
+                          retreat.cardImageUrl!.isNotEmpty)
+                          ? CachedNetworkImage(
+                        imageUrl: retreat.cardImageUrl!,
+                        fit: BoxFit.cover,
+                      )
+                          : Container(
+                        color: Colors.grey[300],
+                        alignment: Alignment.center,
+                        child: Text(
+                          'No Image Available',
+                          style: GoogleFonts.roboto(
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Gradient overlay (fades as the app bar collapses)
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            const Color(0xFF6A0DAD).withOpacity(fadeFactor),
+                            const Color(0xFF3700B3).withOpacity(fadeFactor),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Fixed black overlay for text clarity.
+                    Container(
+                      color: Colors.black.withOpacity(0.25),
+                    ),
+                    // AppBar title
+                    FlexibleSpaceBar(
+                      centerTitle: true,
+                      titlePadding: const EdgeInsets.only(bottom: 16),
+                      title: Text(
+                        retreat.title,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.roboto(
+                          textStyle: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          // Main content
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Padding(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailedDescriptionMarkdown(retreat),
+                    const SizedBox(height: 32),
+                    _buildAboutMeSection(retreat, participant),
+                    const SizedBox(height: 32),
+                    _buildTravelSection(retreat, participant),
+                    const SizedBox(height: 32),
+                    if (retreat.showMushroomOrder)
+                      _buildMushroomsSection(retreat)
+                    else if (retreat.showTruffleOrder)
+                      _buildTrufflesSection(retreat),
+                    const SizedBox(height: 32),
+                    _buildSpotifySection(retreat),
+                    const SizedBox(height: 32),
+                    _buildFacilitatorsSection(retreat.id),
+                    const SizedBox(height: 32),
+                    _buildFellowNuminautsSection(retreat),
+                    const SizedBox(height: 32),
+                    _buildMEQAndFeedbackSection(retreat, participant),
+                    const SizedBox(height: 40),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 8),
+          ),
+        ],
+      ),
+    );
+  }
 
-            // 2) Detailed description
-            _buildDetailedDescriptionMarkdown(retreat),
-            const SizedBox(height: 24),
+  // ─── UI HELPERS ─────────────────────────────────────────────────────────────
 
-            // 3) "Complete About Me"
-            _buildMainActionButtons(retreat, participant),
-            const SizedBox(height: 24),
-
-            // 4) About Your Travels
-            _buildTravelSection(retreat, participant),
-            const SizedBox(height: 24),
-
-            // 5) If showMushroomOrder is true -> show a Mushrooms Section
-            if (retreat.showMushroomOrder) _buildMushroomsSection(retreat),
-            const SizedBox(height: 24),
-
-            // 6) If showTruffleOrder is true -> show a Truffles Section
-            if (retreat.showTruffleOrder) _buildTrufflesSection(retreat),
-            const SizedBox(height: 24),
-
-            // 7) Spotify
-            _buildSpotifySection(retreat),
-            const SizedBox(height: 24),
-
-            // 8) Fellow Numinauts
-            if (retreat.showFellowNuminauts)
-              _buildFellowNuminautsSection(retreat),
-            const SizedBox(height: 24),
-
-            // 9) MEQ & Feedback
-            _buildMEQAndFeedbackSection(retreat, participant),
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.roboto(
+        textStyle: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF2C3E50),
+          letterSpacing: 0.5,
+          shadows: [
+            Shadow(
+              offset: Offset(0, 1),
+              blurRadius: 2.0,
+              color: Colors.black26,
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 1) Detailed Description
   Widget _buildDetailedDescriptionMarkdown(Retreat retreat) {
-    final paragraphs = retreat.detailedDescription; // array of Markdown strings
-
+    final paragraphs = retreat.detailedDescription;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final mdText in paragraphs) ...[
-          MarkdownBody(
-            data: mdText,
-            styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-              p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: 15,
-                height: 1.4,
+      children: paragraphs
+          .map(
+            (mdText) => Column(
+          children: [
+            MarkdownBody(
+              data: mdText,
+              styleSheet:
+              MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                p: GoogleFonts.roboto(
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    height: 1.4,
+                    color: Colors.black,
+                  ),
+                ),
+                h1: GoogleFonts.roboto(
+                  textStyle: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                h2: GoogleFonts.roboto(
+                  textStyle: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
               ),
-              h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              onTapLink: (text, url, title) => _handleLinkTap(url),
             ),
-            onTapLink: (text, url, title) => _handleLinkTap(url),
-          ),
-          const SizedBox(height: 12),
-        ],
-      ],
+            const SizedBox(height: 12),
+          ],
+        ),
+      )
+          .toList(),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 2) Main action buttons
-  Widget _buildMainActionButtons(Retreat retreat, Participant participant) {
+  Widget _buildAboutMeSection(Retreat retreat, Participant participant) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ElevatedButton(
+        _buildSectionTitle('About You'),
+        const SizedBox(height: 8),
+        Text(
+          "It's amazing how strangers often become friends at our retreats. Getting to know each other beforehand can help you feel more connected. Please complete the form below—and share your photo if you’d like.",
+          style: GoogleFonts.roboto(
+            textStyle:
+            const TextStyle(fontSize: 15, height: 1.4, color: Colors.black),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildWideImageButton(
+          assetPath: 'assets/images/myretreat/about_me.png',
+          label: 'Complete About Me',
           onPressed: () {
-            // Navigate to AboutMeScreen and await its result.
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -149,138 +279,150 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
                 ),
               ),
             ).then((updatedParticipant) {
-              if (updatedParticipant != null && updatedParticipant is Participant) {
+              if (updatedParticipant != null &&
+                  updatedParticipant is Participant) {
                 setState(() {
                   _currentParticipant = updatedParticipant;
                 });
               }
             });
           },
-          child: const Text('Complete About Me'),
         ),
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 3) About Your Travels
   Widget _buildTravelSection(Retreat retreat, Participant participant) {
-    final hasTravel = retreat.travelDescription.isNotEmpty ||
+    final hasTravelInfo = retreat.travelDescription.isNotEmpty ||
         retreat.retreatAddress.isNotEmpty ||
         retreat.meetingLocation.isNotEmpty ||
         retreat.returnLocation.isNotEmpty ||
         (retreat.latitude != null && retreat.longitude != null);
 
-    if (!hasTravel) {
-      return const SizedBox.shrink();
-    }
+    if (!hasTravelInfo) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
-        Text(
-          'About your travels',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        // travelDescription
+        _buildSectionTitle('About Your Travels'),
         for (final mdText in retreat.travelDescription) ...[
           MarkdownBody(
             data: mdText,
             styleSheet:
             MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-              p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: 15,
-                height: 1.4,
+              p: GoogleFonts.roboto(
+                textStyle: const TextStyle(
+                    fontSize: 15, height: 1.4, color: Colors.black),
               ),
-              h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             onTapLink: (text, url, title) => _handleLinkTap(url),
           ),
           const SizedBox(height: 12),
         ],
-
-        // retreatAddress
-        if (retreat.retreatAddress.isNotEmpty) ...[
-          for (final addressLine in retreat.retreatAddress) ...[
-            MarkdownBody(
-              data: addressLine,
-              styleSheet:
-              MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontSize: 15,
-                  height: 1.4,
-                ),
-                h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              onTapLink: (text, url, title) => _handleLinkTap(url),
+        Card(
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (retreat.retreatAddress.isNotEmpty)
+                  for (final addressLine in retreat.retreatAddress) ...[
+                    MarkdownBody(
+                      data: addressLine,
+                      styleSheet:
+                      MarkdownStyleSheet.fromTheme(Theme.of(context))
+                          .copyWith(
+                        p: GoogleFonts.roboto(
+                          textStyle: const TextStyle(
+                              fontSize: 15, height: 1.4, color: Colors.black),
+                        ),
+                      ),
+                      onTapLink: (text, url, title) => _handleLinkTap(url),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                if (retreat.latitude != null && retreat.longitude != null) ...[
+                  SmallMapWidget(
+                    latitude: retreat.latitude!,
+                    longitude: retreat.longitude!,
+                    zoomLevel: 11,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (retreat.meetingLocation.isNotEmpty) ...[
+                  Text(
+                    'Meeting Location:',
+                    style: GoogleFonts.roboto(
+                      textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  for (final line in retreat.meetingLocation)
+                    Text(
+                      line,
+                      style: GoogleFonts.roboto(
+                        textStyle:
+                        const TextStyle(color: Colors.black),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+                if (retreat.returnLocation.isNotEmpty) ...[
+                  Text(
+                    'Return Location:',
+                    style: GoogleFonts.roboto(
+                      textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  for (final line in retreat.returnLocation)
+                    Text(
+                      line,
+                      style: GoogleFonts.roboto(
+                        textStyle:
+                        const TextStyle(color: Colors.black),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+              ],
             ),
-            const SizedBox(height: 12),
-          ],
-        ],
-
-        // Map
-        if (retreat.latitude != null && retreat.longitude != null) ...[
-          const SizedBox(height: 8),
-          SmallMapWidget(
-            latitude: retreat.latitude!,
-            longitude: retreat.longitude!,
-            zoomLevel: 11,
           ),
-          const SizedBox(height: 16),
-        ],
-
-        // Meeting Location
-        if (retreat.meetingLocation.isNotEmpty) ...[
-          const Text(
-            'Meeting Location:',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          for (final line in retreat.meetingLocation) Text(line),
-          const SizedBox(height: 12),
-        ],
-
-        // Return Location
-        if (retreat.returnLocation.isNotEmpty) ...[
-          const Text(
-            'Return Location:',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          for (final line in retreat.returnLocation) Text(line),
-          const SizedBox(height: 12),
-        ],
-
-        // Transportation Request
+        ),
+        const SizedBox(height: 8),
         if (retreat.transportationRequest.isNotEmpty) ...[
           for (final requestLine in retreat.transportationRequest) ...[
             MarkdownBody(
               data: requestLine,
               styleSheet:
               MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontSize: 17,
-                  height: 1.4,
-                  fontWeight: FontWeight.w600,
+                p: GoogleFonts.roboto(
+                  textStyle: const TextStyle(
+                    fontSize: 17,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black,
+                  ),
                 ),
-                h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               onTapLink: (text, url, title) => _handleLinkTap(url),
             ),
             const SizedBox(height: 12),
           ],
         ],
-
-        // Submit Travel Details button
-        ElevatedButton(
+        const SizedBox(height: 8),
+        _buildWideImageButton(
+          assetPath: 'assets/images/myretreat/travel.png',
+          label: 'Submit Travel',
           onPressed: () {
             Navigator.push(
               context,
@@ -292,59 +434,38 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
               ),
             );
           },
-          child: const Text('Submit Travel Details'),
         ),
-
         const SizedBox(height: 24),
-
-        // About the Venue
         _buildVenueSection(retreat.venueId),
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 4) Mushroom Section (show if showMushroomOrder == true)
   Widget _buildMushroomsSection(Retreat retreat) {
-    // Title & paragraphs
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // If there's a mushroomTitle (bold markdown)
         if (retreat.mushroomTitle.isNotEmpty) ...[
-          MarkdownBody(
-            data: retreat.mushroomTitle,
-            styleSheet:
-            MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-              p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                height: 1.4,
-              ),
-            ),
-            onTapLink: (text, url, title) => _handleLinkTap(url),
-          ),
+          _buildSectionTitle(retreat.mushroomTitle),
           const SizedBox(height: 8),
         ],
-
-        // MushroomDescription paragraphs
         for (final paragraph in retreat.mushroomDescription) ...[
           MarkdownBody(
             data: paragraph,
             styleSheet:
             MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-              p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: 15,
-                height: 1.4,
+              p: GoogleFonts.roboto(
+                textStyle: const TextStyle(
+                    fontSize: 15, height: 1.4, color: Colors.black),
               ),
             ),
             onTapLink: (text, url, title) => _handleLinkTap(url),
           ),
           const SizedBox(height: 12),
         ],
-
-        // Button to go to your mushroom order screen
-        ElevatedButton(
+        _buildWideImageButton(
+          assetPath: 'assets/images/myretreat/order_mushroom.png',
+          label: 'Order Mushrooms',
           onPressed: () {
             Navigator.push(
               context,
@@ -352,57 +473,41 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
                 builder: (_) => PsychedelicOrderScreen(
                   retreatId: retreat.id,
                   userId: widget.participant.userId,
-                  isMushroomOrder: true,  // <--- Mushrooms
+                  isMushroomOrder: true,
                 ),
               ),
             );
           },
-          child: const Text('Order Mushrooms'),
         ),
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 5) Truffle Section (show if showTruffleOrder == true)
   Widget _buildTrufflesSection(Retreat retreat) {
-    // This uses hypothetical fields 'truffleTitle' and 'truffleDescription'
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (retreat.truffleTitle.isNotEmpty) ...[
-          MarkdownBody(
-            data: retreat.truffleTitle,
-            styleSheet:
-            MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-              p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                height: 1.4,
-              ),
-            ),
-            onTapLink: (text, url, title) => _handleLinkTap(url),
-          ),
+          _buildSectionTitle(retreat.truffleTitle),
           const SizedBox(height: 8),
         ],
-
         for (final paragraph in retreat.truffleDescription) ...[
           MarkdownBody(
             data: paragraph,
             styleSheet:
             MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-              p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontSize: 15,
-                height: 1.4,
+              p: GoogleFonts.roboto(
+                textStyle: const TextStyle(
+                    fontSize: 15, height: 1.4, color: Colors.black),
               ),
             ),
             onTapLink: (text, url, title) => _handleLinkTap(url),
           ),
           const SizedBox(height: 12),
         ],
-
-        // Button to go to your truffle order screen
-        ElevatedButton(
+        _buildWideImageButton(
+          assetPath: 'assets/images/myretreat/order_mushroom.png',
+          label: 'Order Truffles',
           onPressed: () {
             Navigator.push(
               context,
@@ -410,19 +515,16 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
                 builder: (_) => PsychedelicOrderScreen(
                   retreatId: retreat.id,
                   userId: widget.participant.userId,
-                  isMushroomOrder: false, // <--- Truffles
+                  isMushroomOrder: false,
                 ),
               ),
             );
           },
-          child: const Text('Order Truffles'),
         ),
       ],
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 6) Spotify
   Widget _buildSpotifySection(Retreat retreat) {
     final links = retreat.spotifyLinks;
     if (links.isEmpty) return const SizedBox.shrink();
@@ -430,25 +532,21 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildSectionTitle('Music'),
         Text(
-          'Music',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Music plays a crucial role in our psychedelic retreats... (omitted for brevity)',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            fontSize: 15,
-            height: 1.4,
+          'Music is a key element of our retreats—designed to evoke emotion, encourage introspection, and enhance your journey. Our curated playlist perfectly complements the retreat atmosphere. Below, discover the soundtrack for your experience.',
+          style: GoogleFonts.roboto(
+            textStyle:
+            const TextStyle(fontSize: 15, height: 1.4, color: Colors.black),
           ),
         ),
         const SizedBox(height: 16),
-        for (final link in links) ...[
-          _buildSpotifyLinkTile(link),
-          const SizedBox(height: 16),
-        ],
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          alignment: WrapAlignment.center,
+          children: links.map((link) => _buildSpotifyLinkTile(link)).toList(),
+        ),
       ],
     );
   }
@@ -465,25 +563,26 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(FontAwesomeIcons.spotify, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Open Playlist', style: TextStyle(color: Colors.white)),
+          children: [
+            Icon(FontAwesomeIcons.spotify, color: Colors.white, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              'Open Playlist',
+              style: GoogleFonts.roboto(
+                textStyle:
+                const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 7) Venue Section
   Widget _buildVenueSection(String? venueId) {
-    if (venueId == null || venueId.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final myRetreatService = Provider.of<MyRetreatService>(context, listen: false);
-
+    if (venueId == null || venueId.isEmpty) return const SizedBox.shrink();
+    final myRetreatService =
+    Provider.of<MyRetreatService>(context, listen: false);
     return FutureBuilder<Venue?>(
       future: myRetreatService.getVenueById(venueId),
       builder: (context, snapshot) {
@@ -501,22 +600,29 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 16),
-            const Text(
-              'About the Venue',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            _buildSectionTitle('About the Venue'),
             const SizedBox(height: 8),
             for (final paragraph in venue.detailedDescription) ...[
               MarkdownBody(
                 data: paragraph,
                 styleSheet:
                 MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                  p: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 15,
-                    height: 1.4,
+                  p: GoogleFonts.roboto(
+                    textStyle: const TextStyle(
+                        fontSize: 15, height: 1.4, color: Colors.black),
                   ),
-                  h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                  h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  h1: GoogleFonts.roboto(
+                    textStyle: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black),
+                  ),
+                  h2: GoogleFonts.roboto(
+                    textStyle: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black),
+                  ),
                 ),
                 onTapLink: (text, url, title) => _handleLinkTap(url),
               ),
@@ -528,8 +634,7 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: venue.images.length,
-                separatorBuilder: (context, index) =>
-                const SizedBox(width: 16),
+                separatorBuilder: (context, index) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
                   final imageUrl = venue.images[index];
                   return GestureDetector(
@@ -548,12 +653,18 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
                       tag: 'venue-$venueId-$index',
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          imageUrl,
+                        child: CachedNetworkImage(
+                          imageUrl: imageUrl,
                           width: 150,
                           height: 120,
                           fit: BoxFit.cover,
-                          errorBuilder: (ctx, err, stack) => Container(
+                          placeholder: (context, url) => Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  const Color(0xFFB4347F)),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
                             width: 150,
                             height: 120,
                             color: Colors.grey[300],
@@ -572,10 +683,129 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 8) Fellow Numinauts
+  Widget _buildFacilitatorsSection(String retreatId) {
+    final retreatService =
+    Provider.of<RetreatService>(context, listen: false);
+    return FutureBuilder<List<Facilitator>>(
+      future: retreatService.getFacilitatorsForRetreat(retreatId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Text(
+            'Error loading facilitators: ${snapshot.error}',
+            style: GoogleFonts.roboto(color: Colors.black),
+          );
+        }
+        final facilitators = snapshot.data ?? [];
+        if (facilitators.isEmpty) {
+          return Text(
+            'No facilitators assigned for this retreat.',
+            style: GoogleFonts.roboto(fontSize: 15, color: Colors.black),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('Facilitators'),
+            const SizedBox(height: 8),
+            const Text(
+              "Numinous Ways' facilitation team comprises experienced mental health professionals who support retreats with compassion and confidentiality. Although they have extensive healthcare backgrounds, they do not provide clinical services; instead, they offer guidance based on personal psychedelic experience to ensure a safe, supportive environment.",
+              style: TextStyle(fontSize: 14, color: Colors.black),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 180,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: facilitators.length,
+                separatorBuilder: (context, index) =>
+                const SizedBox(width: 20),
+                itemBuilder: (context, index) {
+                  final facilitator = facilitators[index];
+                  return _buildFacilitatorCard(facilitator);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFacilitatorCard(Facilitator facilitator) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FacilitatorProfileScreen(facilitator: facilitator),
+          ),
+        );
+      },
+      child: Container(
+        width: 140,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[100]!, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Colors.grey[200],
+              backgroundImage:
+              CachedNetworkImageProvider(facilitator.photoUrl),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              facilitator.name,
+              style: GoogleFonts.roboto(
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              facilitator.role,
+              style: GoogleFonts.roboto(
+                textStyle: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFellowNuminautsSection(Retreat retreat) {
-    final retreatService = Provider.of<RetreatService>(context, listen: false);
+    if (!retreat.showFellowNuminauts) return const SizedBox.shrink();
+    final retreatService =
+    Provider.of<RetreatService>(context, listen: false);
+
     return FutureBuilder<List<Participant>>(
       future: retreatService.getAllParticipants(retreat.id),
       builder: (context, snapshot) {
@@ -589,82 +819,31 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
         final sharingParticipants =
         participants.where((p) => p.shareBio).toList();
 
-        if (sharingParticipants.isEmpty) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                'My Fellow Numinauts',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text('No participants have chosen to share their bios yet.'),
-            ],
-          );
-        }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'My Fellow Numinauts',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            _buildSectionTitle('My Fellow Numinauts'),
             const SizedBox(height: 8),
-            SizedBox(
-              height: 160,
+            const Text(
+              "Meet your fellow retreat participants through detailed bios and photos. Connecting early helps build a warm, supportive community.",
+              style: TextStyle(fontSize: 15, color: Colors.black),
+            ),
+            const SizedBox(height: 16),
+            sharingParticipants.isEmpty
+                ? const Text(
+              'No participants have chosen to share their bios yet.',
+              style: TextStyle(fontSize: 15, color: Colors.black),
+            )
+                : SizedBox(
+              height: 200,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: sharingParticipants.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 20),
+                separatorBuilder: (context, _) =>
+                const SizedBox(width: 16),
                 itemBuilder: (context, index) {
                   final participant = sharingParticipants[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ParticipantProfileScreen(
-                            participant: participant,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Hero(
-                          tag: participant.photoUrl ?? participant.userId,
-                          child: CircleAvatar(
-                            radius: 40,
-                            backgroundColor: Colors.grey[200],
-                            backgroundImage: participant.photoUrl != null
-                                ? CachedNetworkImageProvider(
-                                participant.photoUrl!)
-                                : null,
-                            child: participant.photoUrl == null
-                                ? const Icon(Icons.person,
-                                size: 40, color: Colors.white)
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: 80,
-                          child: Text(
-                            participant.name,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
+                  return _buildParticipantCard(participant);
                 },
               ),
             ),
@@ -674,89 +853,289 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // 9) MEQ & Feedback
+  Widget _buildParticipantCard(Participant participant) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ParticipantProfileScreen(participant: participant),
+          ),
+        );
+      },
+      child: Container(
+        width: 140,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[100]!, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Hero(
+              tag: participant.photoUrl ?? participant.userId,
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: CircleAvatar(
+                  backgroundColor:
+                  const Color(0xFFB4347F).withOpacity(0.1),
+                  backgroundImage: participant.photoUrl != null
+                      ? CachedNetworkImageProvider(participant.photoUrl!)
+                      : null,
+                  child: participant.photoUrl == null
+                      ? Icon(
+                    Icons.person,
+                    size: 40,
+                    color: const Color(0xFFB4347F).withOpacity(0.5),
+                  )
+                      : null,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              participant.name,
+              style: GoogleFonts.roboto(
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Numinaut',
+              style: GoogleFonts.roboto(
+                textStyle: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMEQAndFeedbackSection(Retreat retreat, Participant participant) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Mystical Experience Questionnaire (MEQ) & Feedback',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        _buildSectionTitle('MEQ-30 & Feedback'),
         const SizedBox(height: 8),
         const Text(
-          'Here you can fill out the MEQ forms before and after your experience, and leave feedback.',
+          'Complete the MEQ forms and share your feedback to enhance future retreats. The 30-item MEQ reliably measures mystical dimensions like unity, positive mood, transcendence, and ineffability—helping us better understand transformative experiences.',
+          style: TextStyle(fontSize: 14, color: Colors.black),
         ),
         const SizedBox(height: 16),
         Row(
           children: [
-            ElevatedButton(
-              onPressed: retreat.showMEQ ? _onMEQButtonPressed : null,
-              child: const Text('MEQ Forms'),
-            ),
-            const SizedBox(width: 16),
-            ElevatedButton(
-              onPressed: retreat.showFeedback ? () {} : null,
-              child: const Text('Feedback'),
-            ),
+            if (retreat.showMEQ)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: _buildWideImageButton(
+                    assetPath: 'assets/images/myretreat/meq30.png',
+                    label: 'MEQ Forms',
+                    onPressed: () async {
+                      // If the participant already consented, navigate directly.
+                      if (participant.meqConsent) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MEQ30Screen(
+                              retreatId: retreat.id,
+                              participant: participant,
+                            ),
+                          ),
+                        );
+                      } else {
+                        // Show consent dialog.
+                        final accepted = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('MEQ Consent'),
+                            content: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Online Consent Form for Participation in Research\n'
+                                        'Title: Mystical Experiences on the Numinous Ways Retreat\n'
+                                        'Researcher(s): Numinous Ways\n'
+                                        'Contact: info@numinousways.com\n\n'
+                                        'Purpose: This research explores mystical experiences during the retreat. Participation is voluntary and you may withdraw at any time.\n\n'
+                                        'Key Information:\n'
+                                        '• Complete an online MEQ and PPS questionnaire.\n'
+                                        '• Your responses are anonymised and will not identify you.\n'
+                                        '• You can withdraw at any time without providing a reason.\n\n'
+                                        'Consent:\n'
+                                        'By checking the box below, you confirm you have read, understood, and agree to participate, and consent to the use of your anonymised data.',
+                                    style: const TextStyle(
+                                        color: Colors.black, fontSize: 14),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Decline'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Accept'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (accepted == true) {
+                          // Use the ExperienceProvider to update MEQ consent.
+                          final experienceProvider =
+                          Provider.of<ExperienceProvider>(context,
+                              listen: false);
+                          final updated = await experienceProvider.updateMEQConsent(
+                              retreat.id, participant);
+                          setState(() {
+                            _currentParticipant = updated;
+                          });
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => MEQ30Screen(
+                                retreatId: retreat.id,
+                                participant: updated,
+                              ),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Consent is required to access the MEQ form.'),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ),
+            if (retreat.showFeedback)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: _buildWideImageButton(
+                    assetPath: 'assets/images/myretreat/feedback.png',
+                    label: 'Feedback',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => FeedbackScreen(
+                            retreatId: retreat.id,
+                            userId: participant.userId,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
           ],
         ),
       ],
     );
   }
 
-  // Handle MEQ Consent
-  void _onMEQButtonPressed() async {
-    final participant = widget.participant;
-    if (participant.meqConsent || _meqConsentDialogAccepted) {
-      // navigate to MEQ
-      return;
-    }
-
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('MEQ Consent'),
-        content: SingleChildScrollView(
-          child: Column(
-            children: const [
-              Text(
-                'Please read and accept the following consent form before proceeding to the MEQ.',
-              ),
-              SizedBox(height: 16),
-              Text(
-                '[Consent Form Text Goes Here...]',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Decline'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Accept'),
+  Widget _buildWideImageButton({
+    required String assetPath,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Ink(
+            height: 90,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              image: DecorationImage(
+                image: AssetImage(assetPath),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.4),
+                  BlendMode.darken,
+                ),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: GoogleFonts.roboto(
+                  textStyle: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                    shadows: [
+                      Shadow(
+                        offset: Offset(0, 2),
+                        blurRadius: 4,
+                        color: Colors.black54,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
-
-    if (accepted == true) {
-      setState(() {
-        _meqConsentDialogAccepted = true;
-      });
-      // Update participant's meqConsent if needed
-      // final retreatService = Provider.of<RetreatService>(context, listen: false);
-      // retreatService.addOrUpdateParticipant(...);
-      // Navigator.push(...);
-    }
   }
 
-  // Handle link taps in Markdown
   Future<void> _handleLinkTap(String? url) async {
     if (url == null) return;
     if (url.startsWith('tel:')) {
@@ -776,12 +1155,6 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
     }
   }
 
-  void _showSnackbar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
@@ -789,5 +1162,10 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
     } else {
       _showSnackbar("Cannot open link: $url");
     }
+  }
+
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 }
