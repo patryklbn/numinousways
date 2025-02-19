@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:numinous_way/screens/my_retreat/experience/experience_detail_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -7,7 +8,7 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../models/experience/retreat.dart';
-import '../../../models/experience/participant.dart'; // Make sure you import Participant here
+import '../../../models/experience/participant.dart';
 import '../../../models/facilitator.dart';
 import '../../../models/venue.dart';
 import '../../../services/retreat_service.dart';
@@ -16,10 +17,9 @@ import '../../../services/myretreat_service.dart';
 import '../../../widgets/experience/retreat_card.dart';
 import '../../full_screen_image_viewer.dart';
 import '../facilitator_profile_screen.dart';
-import '../../../widgets/experience/small_map_widget.dart'; // Import your map widget
+import '../../../widgets/experience/small_map_widget.dart';
+import '../../../viewmodels/experience_provider.dart'; // Import the provider
 
-/// The main screen listing retreats and letting a user select one.
-/// We enforce "user must be logged in AND enrolled" to view full details.
 class ExperienceMainScreen extends StatefulWidget {
   const ExperienceMainScreen({Key? key}) : super(key: key);
 
@@ -30,25 +30,23 @@ class ExperienceMainScreen extends StatefulWidget {
 class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
   late Future<List<Retreat>> _retreatsFuture;
   final RetreatService _retreatService = RetreatService();
+  late MyRetreatService _myRetreatService;
 
-  late MyRetreatService _myRetreatService; // for fetching Venue by ID
   Retreat? _selectedRetreat;
 
-  // Map to track which retreat is expanded (showing full shortDescription)
+  // For toggling "Show more / Show less" in each retreat's shortDescription
   final Map<String, bool> _expandedRetreats = {};
 
-  // Define color constants
-  static const Color appBarColor = Color(0xFFB4347F); // #B4347F
-  static const Color accentColor = Color(0xFFD43323); // #d43323
-  static const Color errorColor = Color(0xFFD43323); // #d43323
+  // Gradient colors for your AppBar
+  static const Color gradientColor1 = Color(0xFF6A0DAD);
+  static const Color gradientColor2 = Color(0xFF3700B3);
 
   @override
   void initState() {
     super.initState();
-    // Load all active (non-archived) retreats
+    // Fetch all active (non-archived) retreats
     _retreatsFuture = _retreatService.fetchActiveRetreats();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Once the widget is built, get MyRetreatService from Provider
       _myRetreatService = Provider.of<MyRetreatService>(context, listen: false);
     });
   }
@@ -57,6 +55,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+      // Gradient AppBar
       appBar: AppBar(
         title: Text(
           'Experience',
@@ -74,7 +73,15 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             ),
           ),
         ),
-        backgroundColor: appBarColor,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [gradientColor1, gradientColor2],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
         elevation: 4.0,
       ),
@@ -84,7 +91,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                valueColor: AlwaysStoppedAnimation<Color>(gradientColor2),
               ),
             );
           }
@@ -93,8 +100,8 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
               child: Text(
                 'Error loading retreats: ${snapshot.error}',
                 style: GoogleFonts.roboto(
-                  textStyle: TextStyle(
-                    color: accentColor,
+                  textStyle: const TextStyle(
+                    color: gradientColor2,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -109,8 +116,8 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
               child: Text(
                 'No retreats available.',
                 style: GoogleFonts.roboto(
-                  textStyle: TextStyle(
-                    color: accentColor,
+                  textStyle: const TextStyle(
+                    color: gradientColor2,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -119,38 +126,22 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             );
           }
 
-          return AnimationLimiter(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: retreats.length,
-              itemBuilder: (context, index) {
-                final retreat = retreats[index];
-                final bool isSelected = (retreat == _selectedRetreat);
+          // If none is selected yet, pick the first
+          _selectedRetreat ??= retreats.first;
 
-                return AnimationConfiguration.staggeredList(
-                  position: index,
-                  duration: const Duration(milliseconds: 375),
-                  child: SlideAnimation(
-                    verticalOffset: 50.0,
-                    child: FadeInAnimation(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // The card
-                          RetreatCard(
-                            retreat: retreat,
-                            onTap: () => _onCardTap(retreat),
-                          ),
+          // Wrap everything in a scrollable Column
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1) Horizontal list of retreat cards
+                _buildHorizontalRetreatList(retreats),
+                const SizedBox(height: 24),
 
-                          // Show details if selected
-                          if (isSelected)
-                            _buildSelectedRetreatDetails(retreat),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
+                // 2) Detail section for the currently selected retreat
+                _buildSelectedRetreatDetails(_selectedRetreat!),
+              ],
             ),
           );
         },
@@ -158,142 +149,99 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
     );
   }
 
-  void _onCardTap(Retreat retreat) {
-    setState(() {
-      // Tap again to collapse
-      if (_selectedRetreat == retreat) {
-        _selectedRetreat = null;
-      } else {
-        _selectedRetreat = retreat;
-      }
-    });
-  }
-
-  Widget _buildSelectedRetreatDetails(Retreat retreat) {
-    final dateFormat = DateFormat('d MMMM');
-    final startStr = dateFormat.format(retreat.startDate);
-    final endStr = dateFormat.format(retreat.endDate);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final bool isSmallScreen = screenWidth < 600;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title: Your Journey Begins Here
-          Text(
-            'Your Journey Begins Here',
-            style: GoogleFonts.roboto(
-              textStyle: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+  /// Builds a horizontal-scrolling list of retreat cards
+  Widget _buildHorizontalRetreatList(List<Retreat> retreats) {
+    return SizedBox(
+      height: 377,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 1),
+        separatorBuilder: (context, index) => const SizedBox(width: 1),
+        itemCount: retreats.length,
+        itemBuilder: (context, index) {
+          final retreat = retreats[index];
+          return AnimationConfiguration.staggeredList(
+            position: index,
+            duration: const Duration(milliseconds: 375),
+            child: SlideAnimation(
+              horizontalOffset: 50.0,
+              child: FadeInAnimation(
+                child: SizedBox(
+                  width: 335,
+                  child: RetreatCard(
+                    retreat: retreat,
+                    onTap: () {
+                      setState(() {
+                        _selectedRetreat = retreat;
+                      });
+                    },
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-
-          // Short Description with "Show More/Less" toggle
-          _buildShortDescription(retreat),
-
-          const SizedBox(height: 20),
-
-          // Title: Venue
-          Text(
-            'Venue',
-            style: GoogleFonts.roboto(
-              textStyle: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildVenueGallery(retreat.venueId),
-          const SizedBox(height: 24),
-
-          // Title: Facilitators and Assistants
-          Text(
-            'Facilitators and Assistants',
-            style: GoogleFonts.roboto(
-              textStyle: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildFacilitatorsSection(retreat.id),
-          const SizedBox(height: 16),
-
-          // Title: Transportation
-          Text(
-            'Transportation',
-            style: GoogleFonts.roboto(
-              textStyle: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Transportation Section
-          isSmallScreen
-              ? Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTransportation(retreat),
-            ],
-          )
-              : Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _buildTransportation(retreat)),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // View Full Details Button
-          ElevatedButton(
-            onPressed: () => _checkEnrollmentAndNavigate(retreat),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: accentColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              textStyle: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Roboto',
-              ),
-            ),
-            child: const Text('View Full Details'),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  /// Builds a truncated or full short description depending on the user's toggle.
+  /// Detail section for the selected retreat
+  Widget _buildSelectedRetreatDetails(Retreat retreat) {
+    final dateFormat = DateFormat('d MMMM');
+    final startStr = dateFormat.format(retreat.startDate);
+    final endStr = dateFormat.format(retreat.endDate);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Your Journey Begins Here'),
+        const SizedBox(height: 8),
+        _buildShortDescription(retreat),
+        const SizedBox(height: 20),
+        _buildSectionTitle('Venue'),
+        const SizedBox(height: 8),
+        _buildVenueGallery(retreat.venueId),
+        const SizedBox(height: 24),
+        _buildSectionTitle('Facilitators and Assistants'),
+        const SizedBox(height: 8),
+        _buildFacilitatorsSection(retreat.id),
+        const SizedBox(height: 24),
+        // Transportation section now rebranded as "Location"
+        _buildTravelSection(retreat),
+        const SizedBox(height: 24),
+        _buildEnrollmentSection(retreat),
+      ],
+    );
+  }
+
+  /// Header styling
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.roboto(
+        textStyle: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: Color(0xFF2C3E50),
+          letterSpacing: 0.5,
+          shadows: [
+            Shadow(
+              offset: Offset(0, 1),
+              blurRadius: 2.0,
+              color: Colors.black26,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Short description with a "Show more / Show less" toggle
   Widget _buildShortDescription(Retreat retreat) {
-    // Join paragraphs into one string
     final shortDesc = retreat.shortDescription.join('\n\n');
-
-    // Check if retreat is expanded in our map
     final isExpanded = _expandedRetreats[retreat.id] ?? false;
-
-    // Choose a character limit for truncation
     const maxChars = 300;
 
-    // If the text is shorter than [maxChars], just show it all
     if (shortDesc.length <= maxChars) {
       return Text(
         shortDesc,
@@ -307,9 +255,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
       );
     }
 
-    // Otherwise, show truncated or full text + "Show more / Show less" button
     final truncatedText = shortDesc.substring(0, maxChars) + '...';
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -335,7 +281,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             style: GoogleFonts.roboto(
               textStyle: TextStyle(
                 fontSize: 14,
-                color: accentColor,
+                color: gradientColor2,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -345,14 +291,14 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
     );
   }
 
-  /// Display the Venue gallery
+  /// Displays venue images or a placeholder
   Widget _buildVenueGallery(String? venueId) {
     if (venueId == null || venueId.isEmpty) {
       return Text(
         "No venue assigned for this retreat.",
         style: GoogleFonts.roboto(
-          textStyle: TextStyle(
-            color: accentColor,
+          textStyle: const TextStyle(
+            color: gradientColor2,
             fontFamily: 'Roboto',
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -360,7 +306,6 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
         ),
       );
     }
-
     return FutureBuilder<Venue?>(
       future: _myRetreatService.getVenueById(venueId),
       builder: (context, snapshot) {
@@ -368,7 +313,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
           return Row(
             children: [
               CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                valueColor: AlwaysStoppedAnimation<Color>(gradientColor2),
               ),
               const SizedBox(width: 8),
               Text(
@@ -390,7 +335,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             "Error: ${snapshot.error}",
             style: GoogleFonts.roboto(
               textStyle: TextStyle(
-                color: accentColor,
+                color: gradientColor2,
                 fontFamily: 'Roboto',
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -404,7 +349,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             "Venue not found for ID: $venueId",
             style: GoogleFonts.roboto(
               textStyle: TextStyle(
-                color: accentColor,
+                color: gradientColor2,
                 fontFamily: 'Roboto',
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -425,7 +370,6 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             ),
           );
         }
-
         return SizedBox(
           height: 120,
           child: ListView.separated(
@@ -457,7 +401,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
                       fit: BoxFit.cover,
                       placeholder: (context, url) => Center(
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                          valueColor: AlwaysStoppedAnimation<Color>(gradientColor2),
                         ),
                       ),
                       errorWidget: (context, url, error) => Container(
@@ -466,7 +410,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
                         color: Colors.grey[300],
                         child: Icon(
                           Icons.error,
-                          color: accentColor,
+                          color: gradientColor2,
                         ),
                       ),
                     ),
@@ -480,7 +424,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
     );
   }
 
-  /// Display the list of facilitators
+  /// Facilitators as cards
   Widget _buildFacilitatorsSection(String retreatId) {
     return FutureBuilder<List<Facilitator>>(
       future: _retreatService.getFacilitatorsForRetreat(retreatId),
@@ -489,7 +433,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
           return Row(
             children: [
               CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                valueColor: AlwaysStoppedAnimation<Color>(gradientColor2),
               ),
               const SizedBox(width: 8),
               Text(
@@ -511,7 +455,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             'Error loading facilitators: ${snapshot.error}',
             style: GoogleFonts.roboto(
               textStyle: TextStyle(
-                color: accentColor,
+                color: gradientColor2,
                 fontFamily: 'Roboto',
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -519,7 +463,6 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             ),
           );
         }
-
         final facilitators = snapshot.data ?? [];
         if (facilitators.isEmpty) {
           return Text(
@@ -534,69 +477,15 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             ),
           );
         }
-
         return SizedBox(
-          height: 160,
+          height: 180,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: facilitators.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 20),
+            separatorBuilder: (context, index) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
               final facilitator = facilitators[index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FacilitatorProfileScreen(
-                        facilitator: facilitator,
-                      ),
-                    ),
-                  );
-                },
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Hero(
-                      tag: facilitator.photoUrl,
-                      child: CircleAvatar(
-                        radius: 40,
-                        backgroundColor: Colors.grey[200],
-                        backgroundImage: CachedNetworkImageProvider(
-                          facilitator.photoUrl,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      facilitator.name,
-                      style: GoogleFonts.roboto(
-                        textStyle: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      facilitator.role,
-                      style: GoogleFonts.roboto(
-                        textStyle: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              );
+              return _buildFacilitatorCard(facilitator);
             },
           ),
         );
@@ -604,50 +493,240 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
     );
   }
 
-  /// Display a small map or other info for transportation
-  Widget _buildTransportation(Retreat retreat) {
+  Widget _buildFacilitatorCard(Facilitator facilitator) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FacilitatorProfileScreen(facilitator: facilitator),
+          ),
+        );
+      },
+      child: Container(
+        width: 140,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey[100]!, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundColor: Colors.grey[200],
+              backgroundImage: CachedNetworkImageProvider(facilitator.photoUrl),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              facilitator.name,
+              style: GoogleFonts.roboto(
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              facilitator.role,
+              style: GoogleFonts.roboto(
+                textStyle: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey[600],
+                ),
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // -------------------------------
+  // TRANSPORTATION (LOCATION) SECTION
+  // -------------------------------
+  Widget _buildTravelSection(Retreat retreat) {
+    final hasTravelInfo = retreat.meetingLocation.isNotEmpty ||
+        retreat.returnLocation.isNotEmpty ||
+        (retreat.latitude != null && retreat.longitude != null);
+
+    if (!hasTravelInfo) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Show a map if lat/long present
-        if (retreat.latitude != null && retreat.longitude != null)
-          SmallMapWidget(
-            latitude: retreat.latitude!,
-            longitude: retreat.longitude!,
-            zoomLevel: 11,
-          )
-        else
-          const Text("No map available: Missing coordinates."),
+        _buildSectionTitle('Location'),
+        Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (retreat.latitude != null && retreat.longitude != null) ...[
+                  SmallMapWidget(
+                    latitude: retreat.latitude!,
+                    longitude: retreat.longitude!,
+                    zoomLevel: 11,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (retreat.meetingLocation.isNotEmpty) ...[
+                  Text(
+                    'Meeting Location:',
+                    style: GoogleFonts.roboto(
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  for (final line in retreat.meetingLocation)
+                    Text(
+                      line,
+                      style: GoogleFonts.roboto(
+                        textStyle: const TextStyle(color: Colors.black),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+                if (retreat.returnLocation.isNotEmpty) ...[
+                  Text(
+                    'Return Location:',
+                    style: GoogleFonts.roboto(
+                      textStyle: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  for (final line in retreat.returnLocation)
+                    Text(
+                      line,
+                      style: GoogleFonts.roboto(
+                        textStyle: const TextStyle(color: Colors.black),
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  /// Check if user is logged in + is enrolled, then fetch participant & navigate
-  Future<void> _checkEnrollmentAndNavigate(Retreat retreat) async {
-    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
-    final userId = loginProvider.userId;
+  // -------------------------------
+  // "ALREADY SIGNED UP?" SECTION
+  // -------------------------------
+  Widget _buildEnrollmentSection(Retreat retreat) {
+    final experienceProvider = Provider.of<ExperienceProvider>(context, listen: false);
+    return FutureBuilder<bool>(
+      future: experienceProvider.checkEnrollment(retreat.id),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox.shrink();
+        }
+        final isEnrolled = snapshot.data ?? false;
+        if (!isEnrolled) return const SizedBox.shrink();
 
-    // 1) Must be logged in
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSectionTitle('Already Signed Up?'),
+            const SizedBox(height: 8),
+            Text(
+              "If you're already enrolled for this retreat, click below for more detailed information and access to important forms.",
+              style: GoogleFonts.roboto(
+                textStyle: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[800],
+                  height: 1.6,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [gradientColor1, gradientColor2],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ElevatedButton(
+                  onPressed: () => _navigateToFullDetails(retreat),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Roboto',
+                    ),
+                  ),
+                  child: const Text(
+                    'View Full Details',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // -------------------------------
+  // NAVIGATION & ERROR HANDLING HELPERS
+  // -------------------------------
+  Future<void> _navigateToFullDetails(Retreat retreat) async {
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+    final experienceProvider = Provider.of<ExperienceProvider>(context, listen: false);
+    final userId = loginProvider.userId;
     if (userId == null) {
       _showDialog('Please log in first to view retreat details.');
       return;
     }
 
-    // 2) Must be enrolled in this retreat
-    final isEnrolled = await _retreatService.isUserEnrolled(retreat.id, userId);
-    if (!isEnrolled) {
-      _showDialog('You must be enrolled to view full retreat details.');
-      return;
-    }
-
-    // 3) Fetch participant doc for this user
-    final participant = await _retreatService.getParticipant(retreat.id, userId);
+    final participant = await experienceProvider.fetchParticipant(retreat.id);
     if (participant == null) {
       _showDialog('Could not find your participant record. Please contact support.');
       return;
     }
 
-    // 4) Navigate to detail screen, providing both retreat & participant
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -667,7 +746,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
           'Access Restricted',
           style: GoogleFonts.roboto(
             textStyle: TextStyle(
-              color: accentColor,
+              color: gradientColor2,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -689,7 +768,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
               'OK',
               style: GoogleFonts.roboto(
                 textStyle: TextStyle(
-                  color: accentColor,
+                  color: gradientColor2,
                   fontWeight: FontWeight.bold,
                 ),
               ),

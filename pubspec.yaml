@@ -124,6 +124,11 @@ flutter:
     - assets/images/myretreat/daymodule.png
     - assets/images/myretreat/day_detail_hero.png
     - assets/images/myretreat/meditation.png
+    - assets/images/myretreat/about_me.png
+    - assets/images/myretreat/feedback.png
+    - assets/images/myretreat/meq30.png
+    - assets/images/myretreat/order_mushroom.png
+    - assets/images/myretreat/travel.png
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

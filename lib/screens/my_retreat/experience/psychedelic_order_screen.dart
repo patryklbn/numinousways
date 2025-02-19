@@ -29,6 +29,10 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
   bool _donationOrPaymentSelected = false;
   bool _declarationConfirmed = false;
 
+  // Define gradient colors
+  final Color _gradientColor1 = const Color(0xFF6A0DAD);
+  final Color _gradientColor2 = const Color(0xFF3700B3);
+
   @override
   void initState() {
     super.initState();
@@ -49,7 +53,6 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
 
     // If the form is invalid, see if the name field is empty
     if (!isValid) {
-      // Specifically check if Name/Pseudonym is empty
       if (_namePseudonymCtrl.text.trim().isEmpty) {
         await showDialog(
           context: context,
@@ -68,7 +71,6 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
           ),
         );
       }
-      // Stop here
       return;
     }
 
@@ -120,15 +122,29 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
     }
   }
 
+  InputDecoration _buildInputDecoration(String label, String hint) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.grey[50],
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: _gradientColor1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: _gradientColor2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMushroom = widget.isMushroomOrder;
-    final primaryColor = const Color(0xFFB4347F);
 
     // Title & text details
-    final screenTitle = isMushroom
-        ? "Order Mushrooms"
-        : "Order Truffles";
+    final screenTitle = isMushroom ? "Order Mushrooms" : "Order Truffles";
 
     final introText = isMushroom
         ? """We’ve set up a system that allows you to place orders for these mushrooms via a designated form. A third-party partner will then manage your order, guaranteeing that it arrives at the center before you do. This setup ensures we comply with Portugal’s legal requirements, providing a secure and lawful experience for everyone involved."""
@@ -154,12 +170,22 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
         ? """I CONFIRM THAT I AM 18 YEARS OR OLDER AND I WILL CONSUME THESE PSILOCYBIN MUSHROOMS ON MY OWN ACCORD. THEY ARE EXCLUSIVELY FOR MY PERSONAL USE. I WILL PREPARE AND CONSUME THEM IN ACCORDANCE WITH LEGAL GUIDELINES. I AM AWARE THAT NUMINOUS WAYS DOES NOT SUPPLY THESE MUSHROOMS."""
         : """I CONFIRM THAT I AM 18 YEARS OR OLDER AND AM PURCHASING THESE PSILOCYBIN TRUFFLES ON MY OWN ACCORD, EXCLUSIVELY FOR MY PERSONAL USE. I WILL PREPARE AND CONSUME THEM IN ACCORDANCE WITH LEGAL GUIDELINES. I AM AWARE THAT NUMINOUS WAYS DOES NOT SUPPLY THESE TRUFFLES.""";
 
-    final submitButtonText = isMushroom ? "PLACE YOUR ORDER" : "PLACE YOUR ORDER";
+    final submitButtonText = "PLACE YOUR ORDER";
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: primaryColor,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_gradientColor1, _gradientColor2],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: Text(
           screenTitle,
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -178,10 +204,7 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 20,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -195,15 +218,9 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
                     // NAME/PSEUDONYM
                     TextFormField(
                       controller: _namePseudonymCtrl,
-                      decoration: InputDecoration(
-                        labelText: "Name/Pseudonym *",
-                        hintText:
+                      decoration: _buildInputDecoration(
+                        "Name/Pseudonym *",
                         "No need for your full name. We'll use this to identify your order.",
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -217,15 +234,9 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
                     // EMAIL (OPTIONAL)
                     TextFormField(
                       controller: _emailCtrl,
-                      decoration: InputDecoration(
-                        labelText: "Email",
-                        hintText:
+                      decoration: _buildInputDecoration(
+                        "Email",
                         "If you'd like to receive a confirmation, please provide your email.",
-                        filled: true,
-                        fillColor: Colors.grey[50],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -239,7 +250,6 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     RadioListTile<String>(
                       title: Text(option3),
                       value: '3',
@@ -247,6 +257,7 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
                       onChanged: (val) {
                         setState(() => _quantity = val ?? '3');
                       },
+                      activeColor: _gradientColor1,
                     ),
                     RadioListTile<String>(
                       title: Text(option4),
@@ -255,9 +266,9 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
                       onChanged: (val) {
                         setState(() => _quantity = val ?? '3');
                       },
+                      activeColor: _gradientColor1,
                     ),
                     const SizedBox(height: 12),
-
                     Text(
                       dosageInfo,
                       style: const TextStyle(fontSize: 14, height: 1.4),
@@ -278,15 +289,13 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
                       style: const TextStyle(fontSize: 14, height: 1.4),
                     ),
                     const SizedBox(height: 12),
-
-                    // CHECKBOX FOR DONATION/PAYMENT
                     CheckboxListTile(
                       title: Text(
                         isMushroom
                             ? "I WOULD LIKE TO MAKE A DONATION AT THE RETREAT CENTER."
                             : "I agree to pay at the retreat center.",
                       ),
-                      activeColor: primaryColor,
+                      activeColor: _gradientColor1,
                       value: _donationOrPaymentSelected,
                       onChanged: (val) {
                         setState(() => _donationOrPaymentSelected = val ?? false);
@@ -308,11 +317,9 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
                       style: const TextStyle(fontSize: 14, height: 1.4),
                     ),
                     const SizedBox(height: 12),
-
-                    // CHECKBOX FOR DECLARATION
                     CheckboxListTile(
                       title: const Text("I confirm the declaration above."),
-                      activeColor: primaryColor,
+                      activeColor: _gradientColor1,
                       value: _declarationConfirmed,
                       onChanged: (val) {
                         setState(() => _declarationConfirmed = val ?? false);
@@ -320,23 +327,34 @@ class _PsychedelicOrderScreenState extends State<PsychedelicOrderScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // SUBMIT BUTTON
+                    // SUBMIT BUTTON WITH GRADIENT
                     Center(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 14,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [_gradientColor1, _gradientColor2],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        onPressed: _submitOrder,
-                        child: Text(
-                          submitButtonText,
-                          style: const TextStyle(fontSize: 16, color: Colors.white),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: _submitOrder,
+                          child: Text(
+                            submitButtonText,
+                            style: const TextStyle(fontSize: 16, color: Colors.white),
+                          ),
                         ),
                       ),
                     ),

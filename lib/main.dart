@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:numinous_way/services/retreat_service.dart';
 import 'package:provider/provider.dart';
 
@@ -34,6 +35,9 @@ import 'services/preparation_course_service.dart';
 import 'viewmodels/preparation_provider.dart';
 import 'viewmodels/day_detail_provider.dart';
 
+// Experience Provider
+import 'viewmodels/experience_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeFirebase();
@@ -46,7 +50,7 @@ void main() async {
       providers: [
         // Notification Service
         Provider<NotificationService>.value(value: notificationService),
-        // Profile View
+        // Profile ViewModel
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
         // Login Provider
         ChangeNotifierProvider(create: (_) => LoginProvider()),
@@ -59,6 +63,18 @@ void main() async {
         ),
         // Retreat Service provider
         Provider<RetreatService>(create: (_) => RetreatService()),
+        // Experience Provider (depends on LoginProvider & RetreatService)
+        ChangeNotifierProxyProvider<LoginProvider, ExperienceProvider>(
+          create: (context) => ExperienceProvider(
+            retreatService: context.read<RetreatService>(),
+            userId: context.read<LoginProvider>().userId,
+          ),
+          update: (context, loginProvider, experienceProvider) =>
+              ExperienceProvider(
+                retreatService: context.read<RetreatService>(),
+                userId: loginProvider.userId,
+              ),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -146,7 +162,7 @@ class MyApp extends StatelessWidget {
             );
           }
 
-          return null; // Unknown route => null => fallback
+          return null; // Unknown route => fallback
         },
         routes: {
           '/onboarding': (context) => OnboardingScreen(),
@@ -167,6 +183,9 @@ class MyApp extends StatelessWidget {
     return ThemeData(
       primarySwatch: Colors.blue,
       scaffoldBackgroundColor: const Color(0xFFEFF3F7),
+      textTheme: GoogleFonts.robotoTextTheme(
+        ThemeData.light().textTheme,
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.blue,
         titleTextStyle: TextStyle(color: Colors.white, fontSize: 24),

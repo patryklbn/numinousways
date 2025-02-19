@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../models/experience/travel_details.dart';
 import '../../../services/retreat_service.dart';
-import 'package:flutter/services.dart'; // If you want special input formats
+import 'package:flutter/services.dart'; // For input formatters
 
 class TravelDetailsScreen extends StatefulWidget {
   final String retreatId;
@@ -48,6 +48,10 @@ class _TravelDetailsScreenState extends State<TravelDetailsScreen> {
 
   // Additional
   late TextEditingController _additionalCommentCtrl;
+
+  // Define gradient colors
+  final Color _gradientColor1 = const Color(0xFF6A0DAD);
+  final Color _gradientColor2 = const Color(0xFF3700B3);
 
   @override
   void initState() {
@@ -166,6 +170,7 @@ class _TravelDetailsScreenState extends State<TravelDetailsScreen> {
     TextInputType keyboardType = TextInputType.text,
     String? hintText,
     int maxLines = 1,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -173,6 +178,7 @@ class _TravelDetailsScreenState extends State<TravelDetailsScreen> {
         controller: controller,
         keyboardType: keyboardType,
         maxLines: maxLines,
+        inputFormatters: inputFormatters,
         decoration: InputDecoration(
           labelText: label,
           hintText: hintText,
@@ -180,7 +186,7 @@ class _TravelDetailsScreenState extends State<TravelDetailsScreen> {
           filled: true,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Colors.grey),
+            borderSide: BorderSide(color: _gradientColor1),
           ),
         ),
         validator: requiredField
@@ -209,6 +215,7 @@ class _TravelDetailsScreenState extends State<TravelDetailsScreen> {
           filled: true,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: _gradientColor1),
           ),
         ),
         child: DropdownButtonHideUnderline(
@@ -228,12 +235,20 @@ class _TravelDetailsScreenState extends State<TravelDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = const Color(0xFFB4347F);
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: primaryColor,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_gradientColor1, _gradientColor2],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         title: const Text(
           "Your Travel Details Form",
           style: TextStyle(
@@ -361,32 +376,44 @@ class _TravelDetailsScreenState extends State<TravelDetailsScreen> {
                   requiredField: true,
                 ),
 
-                // Additional
+                // Additional Comment with max length 250 characters
                 _buildTextField(
                   label: "ADDITIONAL COMMENT OR MESSAGE",
                   controller: _additionalCommentCtrl,
-                  maxLines: 3, // multiple lines
+                  maxLines: 3,
+                  inputFormatters: [LengthLimitingTextInputFormatter(250)],
                 ),
 
                 const SizedBox(height: 20),
 
-                // Submit button
+                // Submit button with gradient background
                 Center(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_gradientColor1, _gradientColor2],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    onPressed: _submitTravelDetails,
-                    child: const Text(
-                      "SUBMIT",
-                      style: TextStyle(fontSize: 16, color: Colors.white),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: _submitTravelDetails,
+                      child: const Text(
+                        "SUBMIT",
+                        style: TextStyle(fontSize: 16, color: Colors.white),
+                      ),
                     ),
                   ),
                 ),
