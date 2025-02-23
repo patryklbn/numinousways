@@ -4,7 +4,7 @@ import '../../services/timeline_service.dart';
 import '../../models/post.dart';
 import '../../services/login_provider.dart';
 import '../../widgets/timeline/post_widget.dart';
-import '../../widgets/app_drawer.dart'; // Import AppDrawer
+import '../../widgets/app_drawer.dart';
 import 'create_post_screen.dart';
 
 class TimelineScreen extends StatefulWidget {
@@ -16,27 +16,35 @@ class TimelineScreen extends StatefulWidget {
 
 class _TimelineScreenState extends State<TimelineScreen> {
   final ValueNotifier<bool> isCommentsScreenOpen = ValueNotifier<bool>(false);
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void dispose() {
     isCommentsScreenOpen.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshPosts() async {
+    // Add a small delay to make the refresh animation more visible
+    await Future.delayed(const Duration(milliseconds: 800));
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final TimelineService timelineService = TimelineService();
     final loginProvider = Provider.of<LoginProvider>(context, listen: false);
-    final String currentUserId = loginProvider.userId!; // Ensure userId is not null
+    final String currentUserId = loginProvider.userId!;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF3F7),
+      backgroundColor: Colors.white, // Changed to white background for cleaner look with dividers
       appBar: AppBar(
         title: const Text(
           "Timeline",
           style: TextStyle(
             color: Colors.white,
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -51,43 +59,122 @@ class _TimelineScreenState extends State<TimelineScreen> {
         ),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          // Add refresh button in app bar
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _refreshPosts,
+            tooltip: 'Refresh timeline',
+          ),
+        ],
       ),
-      drawer: const AppDrawer(), // Include the drawer in the Scaffold
+      drawer: const AppDrawer(),
       body: StreamBuilder<List<Post>>(
-        stream: timelineService.getPosts(currentUserId), // Pass currentUserId here
+        stream: timelineService.getPosts(currentUserId),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
-              child: Text(
-                'Error loading posts: ${snapshot.error}',
-                style: const TextStyle(color: Colors.red, fontSize: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading posts: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.red, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () => setState(() {}),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Try Again'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6A0DAD),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             );
           }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final posts = snapshot.data!;
-          if (posts.isEmpty) {
             return const Center(
-              child: Text(
-                "No posts available.",
-                style: TextStyle(fontSize: 18, color: Colors.grey),
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
               ),
             );
           }
+
+          final posts = snapshot.data!;
+
+          if (posts.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.article_outlined,
+                    size: 80,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    "No posts available yet",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF6A0DAD),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Be the first to share something!",
+                    style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const CreatePostScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('Create Post'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6A0DAD),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
           return RefreshIndicator(
-            onRefresh: () async {
-              // This action refreshes the screen by pulling down
-              setState(() {});
-            },
+            onRefresh: _refreshPosts,
+            color: const Color(0xFF6A0DAD),
+            backgroundColor: Colors.white,
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              controller: _scrollController,
+              padding: const EdgeInsets.only(bottom: 80), // Extra bottom padding for FAB
               itemCount: posts.length,
               itemBuilder: (context, index) {
                 return PostWidget(
                   post: posts[index],
-                  isCommentsScreenOpen: isCommentsScreenOpen, // Pass the ValueNotifier here
+                  isCommentsScreenOpen: isCommentsScreenOpen,
+                  truncateText: true, // Enable text truncation
+                  maxLines: 3, // Limit to 3 lines before truncating
                 );
               },
             ),
@@ -125,7 +212,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
           child: const Icon(
             Icons.add,
             size: 28,
-            color: Colors.white, // Make the "+" icon white
+            color: Colors.white,
           ),
         ),
       ),
