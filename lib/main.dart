@@ -10,6 +10,8 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 
 // Screens
+import 'screens/ai_gallery/ai_gallery_screen.dart';
+import 'screens/ai_gallery/ai_prompt_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/login/register_screen.dart';
@@ -151,16 +153,6 @@ class MyApp extends StatelessWidget {
             );
           }
 
-          // Another route example:
-          if (settings.name == '/profile_screen') {
-            final args = settings.arguments as Map<String, String>;
-            return MaterialPageRoute(
-              builder: (context) => ProfileScreen(
-                userId: args['userId']!,
-                loggedInUserId: args['loggedInUserId']!,
-              ),
-            );
-          }
 
           return null; // Unknown route => fallback
         },
@@ -169,11 +161,20 @@ class MyApp extends StatelessWidget {
           '/register': (context) => RegisterScreen(),
           '/forgot-password': (context) => ForgotPasswordScreen(),
           '/timeline': (context) => TimelineScreen(),
+          '/profile_screen': (context) {
+            final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>;
+            return ProfileScreen(
+              userId: args['userId'] as String,
+              loggedInUserId: args['loggedInUserId'] as String,
+            );
+          },
           '/edit_profile': (context) => EditProfileScreen(),
           '/my_retreat': (context) => MyRetreatScreen(),
           '/retreat_info': (context) => RetreatInfoScreen(),
           '/preparation': (context) => PreparationCourseScreen(),
           '/experience': (context) => ExperienceMainScreen(),
+          '/ai_gallery': (context) => AiGalleryScreen(),
+          '/ai_prompt': (context) => const AiPromptScreen(),
         },
       ),
     );
