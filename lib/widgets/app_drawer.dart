@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/login_provider.dart';
 import '../viewmodels/profile_viewmodel.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -21,7 +23,9 @@ class _AppDrawerState extends State<AppDrawer> {
       final loginProvider = Provider.of<LoginProvider>(context, listen: false);
       profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
       if (loginProvider.isLoggedIn) {
-        profileViewModel.fetchUserProfile(loginProvider.userId!);
+        final profileVM = Provider.of<ProfileViewModel>(context, listen: false);
+        // This will  use cached data if available
+        profileVM.fetchUserProfile(loginProvider.userId!);
       }
     });
   }
@@ -107,6 +111,18 @@ class _AppDrawerState extends State<AppDrawer> {
                 Navigator.pushNamed(context, '/my_retreat'); // Navigate to My Retreat
               },
             ),
+            ListTile(
+              leading: const FaIcon(
+                FontAwesomeIcons.magicWandSparkles,
+                size: 18, // Adjust size as needed (default is ~24)
+              ),
+              title: const Text('AI Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/ai_gallery');
+              },
+            ),
+
             ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
