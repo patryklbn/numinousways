@@ -20,17 +20,29 @@ class Comment {
 
   factory Comment.fromDocument(DocumentSnapshot doc, {required String currentUserId}) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    // Determine if the current user has liked the comment
+
+    // Safely handle the likes field - it might not exist in older documents
     bool liked = false;
-    if (data['likes'] != null && data['likes'] is List) {
-      liked = (data['likes'] as List).contains(currentUserId);
+    List<dynamic> likes = [];
+
+    try {
+      // First check if the field exists before trying to access it
+      if (data.containsKey('likes')) {
+        likes = List<dynamic>.from(data['likes'] ?? []);
+        liked = likes.contains(currentUserId);
+      }
+    } catch (e) {
+      print('Error processing likes for comment ${doc.id}: $e');
+      // Default to not liked if there's an error
+      liked = false;
     }
+
     return Comment(
       id: doc.id,
       userId: data['userId'] ?? '',
       content: data['content'] ?? '',
       createdAt: data['createdAt'] ?? Timestamp.now(),
-      likesCount: data['likesCount'] ?? 0,
+      likesCount: data.containsKey('likesCount') ? data['likesCount'] : 0,
       isLiked: liked,
     );
   }

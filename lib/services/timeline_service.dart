@@ -123,6 +123,7 @@ class TimelineService {
   }
 
   /// Toggle like status on a comment
+  /// Toggle like status on a comment - with improved error handling
   Future<void> toggleLikeOnComment(
       String postId, String commentId, String currentUserId) async {
     DocumentReference commentRef = _firestore
@@ -131,25 +132,46 @@ class TimelineService {
         .collection('comments')
         .doc(commentId);
 
-    DocumentSnapshot commentSnapshot = await commentRef.get();
+    try {
+      DocumentSnapshot commentSnapshot = await commentRef.get();
 
-    if (commentSnapshot.exists) {
-      List<dynamic> likes = commentSnapshot.get('likes') ?? [];
-      int likesCount = commentSnapshot.get('likesCount') ?? 0;
+      if (commentSnapshot.exists) {
+        Map<String, dynamic> data = commentSnapshot.data() as Map<String, dynamic>;
 
-      if (likes.contains(currentUserId)) {
-        // Unlike the comment
-        await commentRef.update({
-          'likes': FieldValue.arrayRemove([currentUserId]),
-          'likesCount': likesCount > 0 ? likesCount - 1 : 0,
-        });
-      } else {
-        // Like the comment
-        await commentRef.update({
-          'likes': FieldValue.arrayUnion([currentUserId]),
-          'likesCount': likesCount + 1,
-        });
+        // Safely handle the likes field - it might not exist in older documents
+        List<dynamic> likes = [];
+        int likesCount = 0;
+
+        // Check if likes field exists in the document
+        if (data.containsKey('likes')) {
+          likes = List<dynamic>.from(data['likes'] ?? []);
+        }
+
+        // Check if likesCount field exists
+        if (data.containsKey('likesCount')) {
+          likesCount = data['likesCount'];
+        } else {
+          // If likesCount doesn't exist, initialize it with the length of likes
+          likesCount = likes.length;
+        }
+
+        if (likes.contains(currentUserId)) {
+          // Unlike the comment
+          await commentRef.update({
+            'likes': FieldValue.arrayRemove([currentUserId]),
+            'likesCount': likesCount > 0 ? likesCount - 1 : 0,
+          });
+        } else {
+          // Like the comment
+          await commentRef.update({
+            'likes': FieldValue.arrayUnion([currentUserId]),
+            'likesCount': likesCount + 1,
+          });
+        }
       }
+    } catch (e) {
+      print('Error toggling like on comment: $e');
+      throw Exception('Failed to toggle like: $e');
     }
   }
 }
