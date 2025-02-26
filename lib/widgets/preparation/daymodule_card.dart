@@ -77,6 +77,12 @@ class DayModuleCard extends StatelessWidget {
               ],
             ),
           ),
+          if (!module.isLocked)
+            Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white.withOpacity(0.7),
+              size: 16,
+            ),
         ],
       ),
     );
@@ -94,9 +100,6 @@ class DayModuleCard extends StatelessWidget {
     );
   }
 
-  /// If dayNumber=0 => "Day 0" => maybe show "Before PPS"
-  /// If dayNumber=22 => "Day 22" => maybe show "After PPS"
-  /// else => "Day X"
   Widget _buildModuleHeader() {
     String dayLabel;
     if (module.dayNumber == 0) {
@@ -107,20 +110,42 @@ class DayModuleCard extends StatelessWidget {
       dayLabel = "Day ${module.dayNumber}";
     }
 
-    return Text(
-      dayLabel,
-      style: TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Colors.white,
-        shadows: [
-          Shadow(
-            offset: Offset(1, 1),
-            blurRadius: 3,
-            color: Colors.black45,
+    return Row(
+      children: [
+        Text(
+          dayLabel,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            shadows: [
+              Shadow(
+                offset: Offset(1, 1),
+                blurRadius: 3,
+                color: Colors.black45,
+              ),
+            ],
+          ),
+        ),
+        if (module.isCompleted) ...[
+          SizedBox(width: 8),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Completed',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
-      ),
+      ],
     );
   }
 }
