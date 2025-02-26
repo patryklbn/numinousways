@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/comment.dart';
 import '../../models/user_profile.dart';
 import '../../services/profile_service.dart';
@@ -43,11 +44,14 @@ class _CommentWidgetState extends State<CommentWidget> {
     if (currentUserId.isEmpty) return;
 
     try {
+      // Toggle like on the comment in Firestore
       await _timelineService.toggleLikeOnComment(
-          widget.postId, widget.comment.id, currentUserId);
+        widget.postId,
+        widget.comment.id,
+        currentUserId,
+      );
 
       if (!mounted) return; // Ensure the widget is still mounted
-
       setState(() {
         if (isLiked) {
           isLiked = false;
@@ -58,7 +62,6 @@ class _CommentWidgetState extends State<CommentWidget> {
         }
       });
     } catch (e) {
-      // Handle any error that may occur during like/unlike operation
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error toggling like: $e')),
@@ -67,9 +70,33 @@ class _CommentWidgetState extends State<CommentWidget> {
     }
   }
 
+  /// NEW: Delete the current comment if the user is the owner.
+  Future<void> _deleteComment() async {
+    try {
+      await _timelineService.deleteComment(widget.postId, widget.comment.id);
+      // Because you have a real-time subscription to comments in CommentsScreen,
+      // the list should auto-update upon deletion. If not, you can manually refresh.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Comment deleted'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting comment: $e')),
+        );
+      }
+    }
+  }
+
   Future<UserProfile?> _fetchUserProfile(String userId) async {
     ProfileService profileService = ProfileService();
-    return await profileService.getUserProfile(userId);
+    return profileService.getUserProfile(userId);
   }
 
   @override
@@ -77,7 +104,7 @@ class _CommentWidgetState extends State<CommentWidget> {
     return FutureBuilder<UserProfile?>(
       future: _fetchUserProfile(widget.comment.userId),
       builder: (context, snapshot) {
-        UserProfile? user = snapshot.data;
+        final user = snapshot.data;
         return Container(
           margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
           padding: const EdgeInsets.all(12),
@@ -89,14 +116,14 @@ class _CommentWidgetState extends State<CommentWidget> {
                 color: Colors.grey.withOpacity(0.1),
                 spreadRadius: 1,
                 blurRadius: 3,
-                offset: const Offset(0, 2), // Shadow position
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Avatar with Circular Border
+              // User Avatar
               GestureDetector(
                 onTap: () {
                   // Navigate to user's profile
@@ -115,17 +142,18 @@ class _CommentWidgetState extends State<CommentWidget> {
                   backgroundColor: const Color(0xFF4DB6AC),
                   child: CircleAvatar(
                     radius: 22, // Inner circle with the actual image
-                    backgroundImage: user?.profileImageUrl != null
-                        ? NetworkImage(user!.profileImageUrl!)
+                    backgroundImage: (user != null && user.profileImageUrl != null)
+                        ? NetworkImage(user.profileImageUrl!)
                         : null,
-                    child: user?.profileImageUrl == null
+                    child: (user == null || user.profileImageUrl == null)
                         ? const Icon(Icons.person, color: Colors.white, size: 24)
                         : null,
                   ),
                 ),
               ),
               const SizedBox(width: 12),
-              // Comment Content and Actions
+
+              // Comment Content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,7 +164,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                       children: [
                         GestureDetector(
                           onTap: () {
-                            // Navigate to user's profile
+                            // Navigate to user profile
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -163,17 +191,55 @@ class _CommentWidgetState extends State<CommentWidget> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    // Comment Text
-                    Text(
-                      widget.comment.content,
-                      style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
-                    ),
+
+                    // Comment text (if any)
+                    if (widget.comment.content.isNotEmpty)
+                      Text(
+                        widget.comment.content,
+                        style: const TextStyle(fontSize: 14, color: Color(0xFF333333)),
+                      ),
+
+                    // Comment image (if any)
+                    if (widget.comment.imageUrl != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: GestureDetector(
+                          onTap: () => _showFullScreenImage(context, widget.comment.imageUrl!),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: CachedNetworkImage(
+                              imageUrl: widget.comment.imageUrl!,
+                              placeholder: (context, url) => Container(
+                                height: 150,
+                                width: double.infinity,
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
+                                  ),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Container(
+                                height: 150,
+                                width: double.infinity,
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: Icon(Icons.broken_image, color: Colors.grey),
+                                ),
+                              ),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      ),
+
                     const SizedBox(height: 8),
-                    // Like Button and Count - Aligned to Left
+
+                    // Row of Like + (optional) Delete
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.start, // Align to the left
-                      crossAxisAlignment: CrossAxisAlignment.center, // Vertically center the items
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
+                        // Like button
                         GestureDetector(
                           onTap: _toggleLike,
                           child: Row(
@@ -183,7 +249,7 @@ class _CommentWidgetState extends State<CommentWidget> {
                                 color: isLiked ? Colors.red : Colors.grey,
                                 size: 20,
                               ),
-                              const SizedBox(width: 4), // Small space between icon and count
+                              const SizedBox(width: 4),
                               Text(
                                 '$likesCount',
                                 style: const TextStyle(fontSize: 14, color: Colors.grey),
@@ -191,7 +257,25 @@ class _CommentWidgetState extends State<CommentWidget> {
                             ],
                           ),
                         ),
-                        // Optional: Add more actions here (e.g., reply, share)
+
+                        // Spacing
+                        const SizedBox(width: 16),
+
+                        // Delete button: only visible if comment belongs to the logged-in user
+                        if (widget.comment.userId == currentUserId)
+                          GestureDetector(
+                            onTap: _confirmDelete,
+                            child: Row(
+                              children: const [
+                                Icon(Icons.delete, color: Colors.red, size: 20),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Delete',
+                                  style: TextStyle(fontSize: 14, color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -201,6 +285,64 @@ class _CommentWidgetState extends State<CommentWidget> {
           ),
         );
       },
+    );
+  }
+
+  // Prompt for confirmation before deleting
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Comment'),
+        content: const Text('Are you sure you want to delete this comment?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Close dialog
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _deleteComment(); // Actually delete the comment
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+            elevation: 0,
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.contain,
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                errorWidget: (context, url, error) => const Icon(
+                  Icons.error,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
