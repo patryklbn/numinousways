@@ -174,7 +174,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                   post: posts[index],
                   isCommentsScreenOpen: isCommentsScreenOpen,
                   truncateText: true, // Enable text truncation
-                  maxLines: 3, // Limit to 3 lines before truncating
+                  maxLines: 5, // Limit to 3 lines before truncating
                 );
               },
             ),
