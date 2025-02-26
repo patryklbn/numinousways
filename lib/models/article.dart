@@ -17,4 +17,14 @@ class Article {
       description: map['description'] as String,
     );
   }
+
+  // Convert the Article instance to a map.
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'description': description,
+      'url': url,
+    };
+  }
+
 }
