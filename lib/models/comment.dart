@@ -5,6 +5,7 @@ class Comment {
   String id;
   String userId;
   String content;
+  final String? imageUrl;
   Timestamp createdAt;
   int likesCount;
   bool isLiked; // Indicates if the current user has liked this comment
@@ -13,6 +14,7 @@ class Comment {
     required this.id,
     required this.userId,
     required this.content,
+    this.imageUrl,
     required this.createdAt,
     this.likesCount = 0,
     this.isLiked = false,
@@ -26,7 +28,6 @@ class Comment {
     List<dynamic> likes = [];
 
     try {
-      // First check if the field exists before trying to access it
       if (data.containsKey('likes')) {
         likes = List<dynamic>.from(data['likes'] ?? []);
         liked = likes.contains(currentUserId);
@@ -41,6 +42,7 @@ class Comment {
       id: doc.id,
       userId: data['userId'] ?? '',
       content: data['content'] ?? '',
+      imageUrl: data['imageUrl'],
       createdAt: data['createdAt'] ?? Timestamp.now(),
       likesCount: data.containsKey('likesCount') ? data['likesCount'] : 0,
       isLiked: liked,
@@ -51,9 +53,10 @@ class Comment {
     return {
       'userId': userId,
       'content': content,
+      'imageUrl': imageUrl, // Add the imageUrl field to the map
       'createdAt': createdAt,
       'likesCount': likesCount,
-      // 'likes' is not stored in the model as it's user-specific
+
     };
   }
 }

@@ -6,13 +6,10 @@ import '/models/daymodule.dart';
 import '/services/day_detail_service.dart';
 import '/services/preparation_course_service.dart';
 
-/// A provider to manage day detail state & Firestore logic.
+/// A provider to manage day detail state & Firestore logic for the preparation course.
 class DayDetailProvider extends ChangeNotifier {
   final int dayNumber;
   final bool isDayCompletedInitially;
-
-  /// You could also pass userId in constructor if you prefer
-  /// or get it from a separate user provider as needed.
 
   DayDetailProvider({
     required this.dayNumber,
@@ -30,7 +27,6 @@ class DayDetailProvider extends ChangeNotifier {
   bool isLoading = false;
   DayDetail? dayDetail;
   bool get isDayCompleted => isDayCompletedInitially;
-  // or you can store a mutable `bool _isDayCompleted` if you want to override it.
 
   /// Each key = task.title, value = bool for completion
   Map<String, bool> taskCompletion = {};
@@ -41,13 +37,12 @@ class DayDetailProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1) Fetch day detail
+      // 1) Fetch day detail.
       final details = await _dayDetailService.getDayDetail(dayNumber);
       dayDetail = details;
 
-      // 2) Load user-specific data for tasks from the preparation modules
+      // 2) Load user-specific data for tasks from the preparation modules.
       final userData = await _prepService.getUserPreparationData(_userId);
-
       Map<String, dynamic>? selectedModuleData;
       if (userData != null && userData['modules'] is List) {
         for (var m in userData['modules']) {
@@ -58,7 +53,7 @@ class DayDetailProvider extends ChangeNotifier {
         }
       }
 
-      // 3) Initialize local checkbox states
+      // 3) Initialize local checkbox states.
       final initialCompletion = <String, bool>{};
       if (details != null) {
         for (var task in details.tasks) {
@@ -70,10 +65,9 @@ class DayDetailProvider extends ChangeNotifier {
           initialCompletion[task.title] = completed;
         }
       }
-
       taskCompletion = initialCompletion;
     } catch (e) {
-      // handle error or do nothing
+      print('Error in fetchData: $e');
     }
 
     isLoading = false;
@@ -94,8 +88,43 @@ class DayDetailProvider extends ChangeNotifier {
     await _prepService.updateModuleCompletion(
       _userId,
       dayNumber,
-      true,         // pass "true" for day completed
+      true, // pass "true" for day completed
       taskCompletion,
     );
+    await _updateProgress();
+  }
+
+  /// Updates the overall preparation progress for the user in Firestore.
+  /// It recalculates the number of completed modules (days) and writes:
+  ///   - progress (percentage)
+  ///   - completedCount
+  ///   - totalModules (assumed to be 21)
+  ///   - lastUpdated timestamp
+  Future<void> _updateProgress() async {
+    try {
+      // Fetch the user's preparation data to recalc progress.
+      final userData = await _prepService.getUserPreparationData(_userId);
+      int completedCount = 0;
+      if (userData != null && userData['modules'] is List) {
+        for (var m in userData['modules']) {
+          if (m['isCompleted'] == true) {
+            completedCount++;
+          }
+        }
+      }
+      const totalModules = 21;
+      double progress = totalModules > 0 ? (completedCount / totalModules) * 100 : 0;
+      await FirebaseFirestore.instance
+          .collection('preparation_progress')
+          .doc(_userId)
+          .set({
+        'progress': progress,
+        'completedCount': completedCount,
+        'totalModules': totalModules,
+        'lastUpdated': DateTime.now().toIso8601String(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      print('Error updating preparation progress: $e');
+    }
   }
 }

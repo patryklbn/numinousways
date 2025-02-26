@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../models/post.dart';
 import '../models/comment.dart';
+import 'package:path/path.dart' as path;
 
 class TimelineService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -90,23 +94,28 @@ class TimelineService {
   // -------------------------
 
   /// Add a comment to a post
-  Future<void> addComment(
-      String postId, String content, String currentUserId) async {
-    DocumentReference postRef = _firestore.collection('posts').doc(postId);
+  Future<void> addComment(String postId, String content, String userId, {String? imageUrl}) async {
+    try {
+      // Reference to the comments collection for this post
+      final commentsRef = _firestore.collection('posts').doc(postId).collection('comments');
 
-    // Add the comment to the 'comments' subcollection
-    await postRef.collection('comments').add({
-      'userId': currentUserId,
-      'content': content,
-      'createdAt': Timestamp.now(),
-      'likesCount': 0,
-      'likes': [], // Initialize likes as empty array
-    });
+      // Create a new comment document
+      await commentsRef.add({
+        'userId': userId,
+        'content': content,
+        'imageUrl': imageUrl, // Add the image URL if available
+        'likesCount': 0,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
-    // Increment the commentsCount in the post document
-    await postRef.update({
-      'commentsCount': FieldValue.increment(1),
-    });
+      // Update the comments count in the post document
+      await _firestore.collection('posts').doc(postId).update({
+        'commentsCount': FieldValue.increment(1),
+      });
+    } catch (e) {
+      print('Error adding comment: $e');
+      throw e;
+    }
   }
 
   /// Get comments for a post
@@ -117,10 +126,61 @@ class TimelineService {
         .collection('comments')
         .orderBy('createdAt', descending: false)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-        .map((doc) => Comment.fromDocument(doc, currentUserId: currentUserId))
-        .toList());
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        final likes = data['likes'] as List<dynamic>? ?? [];
+
+        return Comment(
+          id: doc.id,
+          userId: data['userId'] ?? '',
+          content: data['content'] ?? '',
+          imageUrl: data['imageUrl'], // Add this line to get the image URL
+          likesCount: data['likesCount'] ?? 0,
+          isLiked: likes.contains(currentUserId),
+          createdAt: data['createdAt'] ?? Timestamp.now(),
+        );
+      }).toList();
+    });
   }
+
+  // Add this method to upload comment images
+  Future<String?> uploadCommentImage(File imageFile, String postId) async {
+    try {
+      // Compress the image first if you have a compression function
+      // File compressedImage = await compressImage(imageFile);
+
+      // Create a unique filename with timestamp
+      final fileName = 'comment_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageFile.path)}';
+
+      // Reference to the storage path with postId and filename
+      final storageRef = FirebaseStorage.instance.ref().child('comment_images/$postId/$fileName');
+
+      // Upload the file
+      await storageRef.putFile(imageFile);
+
+      // Get the download URL
+      final downloadUrl = await storageRef.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      print("Error uploading comment image: $e");
+      return null;
+    }
+  }
+
+  Future<void> deleteComment(String postId, String commentId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId)
+          .delete();
+    } catch (e) {
+      throw Exception('Error deleting comment: $e');
+    }
+  }
+
 
   /// Toggle like status on a comment
   /// Toggle like status on a comment - with improved error handling

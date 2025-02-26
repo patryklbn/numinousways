@@ -117,7 +117,6 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
     );
   }
 
-
   Widget _buildHeaderSection() {
     if (!_showInfoOverlay) return const SizedBox.shrink();
 
@@ -162,7 +161,7 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
     return StreamBuilder<QuerySnapshot>(
       stream: _aiGalleryService.streamAllImages(),
       builder: (context, snapshot) {
-        // Add error handling
+        // Error handling
         if (snapshot.hasError) {
           print('Error in AI Gallery stream: ${snapshot.error}');
           return Center(
@@ -170,7 +169,7 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.error_outline, color: Colors.red, size: 48),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
                 Text(
                   'Error loading images: ${snapshot.error}',
                   textAlign: TextAlign.center,
@@ -215,6 +214,7 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
           );
         }
 
+        // Build masonry layout
         return MasonryGridView.count(
           padding: const EdgeInsets.all(16),
           crossAxisCount: 2,
@@ -240,7 +240,7 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
     final likes = List<String>.from(data['likes'] ?? []);
     final bool isLiked = userId != null && likes.contains(userId);
 
-    // Extract filter from prompt if it exists (in format [FilterName])
+    // Extract filter from prompt if it exists (format [FilterName])
     String? appliedFilter;
     if (prompt.contains('[') && prompt.contains(']')) {
       final startIndex = prompt.lastIndexOf('[') + 1;
@@ -250,13 +250,23 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
       }
     }
 
+    // Random tile height for the masonry layout
     final tileHeight = _cachedHeights.putIfAbsent(
       docId,
           () => (200 + _random.nextInt(150)).toDouble(),
     );
 
     return GestureDetector(
-      onTap: () => _showImageDetails(context, docId, imageUrl, prompt, userName, creatorUserId, likes.length, isLiked),
+      onTap: () => _showImageDetails(
+        context,
+        docId,
+        imageUrl,
+        prompt,
+        userName,
+        creatorUserId,
+        likes.length,
+        isLiked,
+      ),
       child: Container(
         height: tileHeight,
         decoration: BoxDecoration(
@@ -280,6 +290,25 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
                 child: Image.network(
                   imageUrl,
                   fit: BoxFit.cover,
+                  // SHOW SPINNER / PLACEHOLDER WHILE LOADING
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) {
+                      // Image fully loaded
+                      return child;
+                    }
+                    // Loading in progress -> show a placeholder
+                    return Container(
+                      color: Colors.grey[900],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                              : null,
+                        ),
+                      ),
+                    );
+                  },
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       color: Colors.grey[800],
@@ -318,31 +347,35 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      // Display the image creator's username
                       Expanded(
                         child: StreamBuilder<DocumentSnapshot>(
-                            stream: FirebaseFirestore.instance.collection('users').doc(creatorUserId).snapshots(),
-                            builder: (context, snapshot) {
-                              // Default to stored userName if Firestore data isn't available
-                              String displayName = userName;
-
-                              // If we have data from Firestore, use it
-                              if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
-                                final userData = snapshot.data!.data() as Map<String, dynamic>?;
-                                if (userData != null && userData['name'] != null) {
-                                  displayName = userData['name'] as String;
-                                }
+                          stream: FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(creatorUserId)
+                              .snapshots(),
+                          builder: (context, snapshot) {
+                            String displayName = userName; // Fallback
+                            if (snapshot.hasData &&
+                                snapshot.data != null &&
+                                snapshot.data!.exists) {
+                              final userData =
+                              snapshot.data!.data() as Map<String, dynamic>?;
+                              if (userData != null &&
+                                  userData['name'] != null) {
+                                displayName = userData['name'] as String;
                               }
-
-                              return Text(
-                                displayName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              );
                             }
+                            return Text(
+                              displayName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
                         ),
                       ),
                       InkWell(
@@ -483,7 +516,7 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
       String userName,
       String creatorUserId,
       int likesCount,
-      bool isLiked
+      bool isLiked,
       ) {
     // Extract filter from prompt if it exists
     String displayPrompt = prompt;
@@ -494,7 +527,7 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
       final endIndex = prompt.lastIndexOf(']') + 1;
       if (startIndex < endIndex) {
         appliedFilter = prompt.substring(startIndex + 1, endIndex - 1);
-        // Remove the filter from the display prompt
+        // Remove the filter text from the displayed prompt
         displayPrompt = prompt.replaceRange(startIndex, endIndex, '').trim();
       }
     }
@@ -516,6 +549,7 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Drag handle
             Container(
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 160),
@@ -530,7 +564,7 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Image with filter badge and delete option
+                    // Image preview with optional filter badge & delete icon
                     Stack(
                       children: [
                         ClipRRect(
@@ -541,14 +575,12 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
                             width: double.infinity,
                           ),
                         ),
-                        // Show filter badge on the image if filter was applied
                         if (appliedFilter != null)
                           Positioned(
                             top: 12,
                             right: 12,
                             child: _buildFilterBadge(appliedFilter),
                           ),
-                        // Delete button for creator
                         if (isCreator)
                           Positioned(
                             top: 12,
@@ -575,21 +607,26 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
 
                     // Creator profile with clickable user info
                     StreamBuilder<DocumentSnapshot>(
-                      stream: FirebaseFirestore.instance.collection('users').doc(creatorUserId).snapshots(),
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(creatorUserId)
+                          .snapshots(),
                       builder: (context, snapshot) {
-                        // Default to the passed userName if we can't get data from Firestore
-                        String displayName = userName;
+                        String displayName = userName; // fallback
                         String? profileImageUrl;
 
-                        // If we have data, use the name from Firestore
-                        if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
-                          final userData = snapshot.data!.data() as Map<String, dynamic>?;
+                        if (snapshot.hasData &&
+                            snapshot.data != null &&
+                            snapshot.data!.exists) {
+                          final userData =
+                          snapshot.data!.data() as Map<String, dynamic>?;
                           if (userData != null) {
                             if (userData['name'] != null) {
                               displayName = userData['name'] as String;
                             }
                             if (userData['profileImageUrl'] != null) {
-                              profileImageUrl = userData['profileImageUrl'] as String;
+                              profileImageUrl =
+                              userData['profileImageUrl'] as String;
                             }
                           }
                         }
@@ -616,7 +653,6 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
                             ),
                             child: Row(
                               children: [
-                                // User avatar
                                 CircleAvatar(
                                   radius: 28,
                                   backgroundColor: const Color(0xFF6A0DAD),
@@ -626,7 +662,11 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
                                         ? NetworkImage(profileImageUrl)
                                         : null,
                                     child: profileImageUrl == null
-                                        ? const Icon(Icons.person, size: 30, color: Colors.white)
+                                        ? const Icon(
+                                      Icons.person,
+                                      size: 30,
+                                      color: Colors.white,
+                                    )
                                         : null,
                                   ),
                                 ),

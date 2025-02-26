@@ -5,7 +5,6 @@ import '../services/login_provider.dart';
 import '../viewmodels/profile_viewmodel.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
 
@@ -24,7 +23,7 @@ class _AppDrawerState extends State<AppDrawer> {
       profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
       if (loginProvider.isLoggedIn) {
         final profileVM = Provider.of<ProfileViewModel>(context, listen: false);
-        // This will  use cached data if available
+        // This will use cached data if available, or fetch from Firestore if not
         profileVM.fetchUserProfile(loginProvider.userId!);
       }
     });
@@ -32,10 +31,8 @@ class _AppDrawerState extends State<AppDrawer> {
 
   Future<void> _logout(BuildContext context) async {
     final loginProvider = Provider.of<LoginProvider>(context, listen: false);
-
     // Perform logout
     await loginProvider.logout();
-
     // Navigate to Onboarding Screen and clear navigation stack
     Navigator.pushNamedAndRemoveUntil(
       context,
@@ -55,9 +52,6 @@ class _AppDrawerState extends State<AppDrawer> {
     final String userEmail =
         FirebaseAuth.instance.currentUser?.email ?? 'user@example.com';
 
-    const String defaultAvatarUrl =
-        'https://firebasestorage.googleapis.com/v0/b/yourapp.appspot.com/o/profile_images%2Fdefault_avatar.png?alt=media';
-
     return Drawer(
       child: Container(
         color: Colors.white, // Drawer background color
@@ -73,17 +67,14 @@ class _AppDrawerState extends State<AppDrawer> {
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               accountEmail: Text(userEmail),
+              // Custom avatar handling
               currentAccountPicture: CircleAvatar(
                 radius: 36, // Outer circle
-                  backgroundColor: const Color(0xFFA785D3),
-                 // Neutral white color for the border
+                backgroundColor: const Color(0xFFA785D3),
                 child: CircleAvatar(
-                  radius: 34, // Inner circle with the actual image
-                  backgroundColor: Colors.grey[200], // Fallback color
-                  backgroundImage: NetworkImage(userProfile?.profileImageUrl ?? defaultAvatarUrl),
-                  child: userProfile?.profileImageUrl == null
-                      ? const Icon(Icons.person, size: 36, color: Colors.grey)
-                      : null,
+                  radius: 34, // Inner circle where the image or default icon goes
+                  backgroundColor: Colors.grey[200],
+                  child: _buildAvatarChild(userProfile?.profileImageUrl),
                 ),
               ),
               decoration: const BoxDecoration(
@@ -100,21 +91,21 @@ class _AppDrawerState extends State<AppDrawer> {
               title: const Text('Timeline'),
               onTap: () {
                 Navigator.pop(context); // Close drawer
-                Navigator.pushNamed(context, '/timeline'); // Navigate to Timeline
+                Navigator.pushNamed(context, '/timeline');
               },
             ),
             ListTile(
               leading: const Icon(Icons.event),
               title: const Text('My Retreat'),
               onTap: () {
-                Navigator.pop(context); // Close drawer
-                Navigator.pushNamed(context, '/my_retreat'); // Navigate to My Retreat
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/my_retreat');
               },
             ),
             ListTile(
               leading: const FaIcon(
                 FontAwesomeIcons.magicWandSparkles,
-                size: 18, // Adjust size as needed (default is ~24)
+                size: 18,
               ),
               title: const Text('AI Gallery'),
               onTap: () {
@@ -122,12 +113,11 @@ class _AppDrawerState extends State<AppDrawer> {
                 Navigator.pushNamed(context, '/ai_gallery');
               },
             ),
-
             ListTile(
               leading: const Icon(Icons.person),
               title: const Text('Profile'),
               onTap: () {
-                Navigator.pop(context); // Close drawer
+                Navigator.pop(context);
                 Navigator.pushNamed(
                   context,
                   '/profile_screen',
@@ -135,7 +125,7 @@ class _AppDrawerState extends State<AppDrawer> {
                     'userId': loggedInUserId,
                     'loggedInUserId': loggedInUserId,
                   },
-                ); // Navigate to Profile with arguments
+                );
               },
             ),
             const Divider(), // Divider between menu items
@@ -144,12 +134,34 @@ class _AppDrawerState extends State<AppDrawer> {
               title: const Text('Log Out'),
               onTap: () async {
                 Navigator.pop(context); // Close drawer
-                await _logout(context); // Perform logout
+                await _logout(context);
               },
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// Returns either a NetworkImage (with error fallback) or a built-in icon if there's no image.
+  Widget _buildAvatarChild(String? profileImageUrl) {
+    // If we have a valid profile image URL, attempt to load it
+    if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+      return ClipOval(
+        child: Image.network(
+          profileImageUrl,
+          fit: BoxFit.cover,
+          width: 68,
+          height: 68,
+          // If the image fails to load, show the default icon
+          errorBuilder: (context, error, stackTrace) {
+            return const Icon(Icons.person, size: 36, color: Colors.grey);
+          },
+        ),
+      );
+    }
+
+    // Otherwise, show built-in default icon
+    return const Icon(Icons.person, size: 36, color: Colors.grey);
   }
 }

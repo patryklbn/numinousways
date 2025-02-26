@@ -18,13 +18,16 @@ class FeedbackScreen extends StatefulWidget {
 
 class _FeedbackScreenState extends State<FeedbackScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
+  bool _isSubmitting = false;
 
-  double _overallExperience = 1; // 1..10
-  double _securitySupport = 1;   // 1..10
-  double _groupVsFreeTime = 5;   // 0..10: 0=too many group activities, 10=too much free time
-  double _comfortFacilities = 1; // 1..10
+  // Scoring variables
+  double _overallExperience = 1;
+  double _securitySupport = 1;
+  double _groupVsFreeTime = 5;
+  double _comfortFacilities = 1;
 
-  // Open-ended questions
+  // Controllers
   final TextEditingController _enhanceSecurityCtrl = TextEditingController();
   final TextEditingController _smallGroupFeedbackCtrl = TextEditingController();
   final TextEditingController _facilitationFeedbackCtrl = TextEditingController();
@@ -34,12 +37,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   final TextEditingController _recommendationCtrl = TextEditingController();
   final TextEditingController _additionalThoughtsCtrl = TextEditingController();
 
-  // Gradient colors to use across the screen
-  final Color _gradientColor1 = const Color(0xFF6A0DAD);
-  final Color _gradientColor2 = const Color(0xFF3700B3);
+  // Theme colors
+  final Color _primaryColor = const Color(0xFF6A0DAD);
+  final Color _secondaryColor = const Color(0xFF3700B3);
+  final Color _backgroundColor = const Color(0xFFF8F9FA);
+  final Color _cardColor = Colors.white;
+  final Color _textColor = const Color(0xFF333333);
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _enhanceSecurityCtrl.dispose();
     _smallGroupFeedbackCtrl.dispose();
     _facilitationFeedbackCtrl.dispose();
@@ -51,10 +58,205 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     super.dispose();
   }
 
+  Widget _buildSectionHeader(String title, {IconData? icon}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 24,
+            decoration: BoxDecoration(
+              color: _primaryColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          if (icon != null) Icon(icon, color: _primaryColor),
+          if (icon != null) const SizedBox(width: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: _primaryColor,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    String? hintText,
+    int maxLines = 3,
+    IconData? icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
+            child: Row(
+              children: [
+                if (icon != null) Icon(icon, size: 18, color: _primaryColor),
+                if (icon != null) const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: _primaryColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextFormField(
+            controller: controller,
+            maxLines: maxLines,
+            style: TextStyle(
+              color: _textColor,
+              fontSize: 15,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              fillColor: _cardColor,
+              filled: true,
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: _primaryColor, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.all(16),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRatingSection({
+    required String title,
+    required String description,
+    required double value,
+    required Function(double) onChanged,
+    required double min,
+    required double max,
+    IconData? icon,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) Icon(icon, size: 20, color: _primaryColor),
+              if (icon != null) const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              Text(
+                value.toStringAsFixed(0),
+                style: TextStyle(
+                  color: _primaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description,
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 13,
+            ),
+          ),
+          Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: (max - min).toInt(),
+            activeColor: _primaryColor,
+            inactiveColor: _primaryColor.withOpacity(0.2),
+            onChanged: onChanged,
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                min.toInt().toString(),
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+              Text(
+                max.toInt().toString(),
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormSection(String title, List<Widget> children) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionHeader(title),
+          ...children,
+        ],
+      ),
+    );
+  }
+
   Future<void> _submitFeedback() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    setState(() {
+      _isSubmitting = true;
+    });
 
     final feedbackData = {
       'overallExperience': _overallExperience,
@@ -65,7 +267,6 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       'highlight': _highlightCtrl.text.trim(),
       'challenging': _challengingCtrl.text.trim(),
       'groupVsFreeTime': _groupVsFreeTime,
-      'atmosphere': "",
       'comfortFacilities': _comfortFacilities,
       'makeBetter': _makeBetterCtrl.text.trim(),
       'recommendation': _recommendationCtrl.text.trim(),
@@ -82,117 +283,44 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Thank you for your feedback!")),
+        SnackBar(
+          content: const Text("Thank you for your feedback!"),
+          backgroundColor: _primaryColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
       );
       Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error submitting feedback: $e")),
-      );
-    }
-  }
-
-  // Helper to build a label widget
-  Widget _buildLabel(String text) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-      ),
-    );
-  }
-
-  // Helper to build a gradient text field with custom borders.
-  Widget _buildGradientTextField({
-    TextEditingController? controller,
-    required String hintText,
-    int maxLines = 3,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        border: OutlineInputBorder(
-          borderSide: BorderSide(color: _gradientColor1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: _gradientColor1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: _gradientColor2, width: 2),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        hintText: hintText,
-      ),
-    );
-  }
-
-  // Helper to build a slider.
-  Widget _buildSlider({
-    required double minVal,
-    required double maxVal,
-    required double currentVal,
-    required Function(double) onChange,
-  }) {
-    return Slider(
-      min: minVal,
-      max: maxVal,
-      divisions: (maxVal - minVal).toInt(),
-      value: currentVal,
-      label: currentVal.toStringAsFixed(0),
-      onChanged: (val) => setState(() => onChange(val)),
-    );
-  }
-
-  // Helper method to build a gradient button with bold text.
-  Widget _buildGradientButton({
-    required String text,
-    required VoidCallback onPressed,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_gradientColor1, _gradientColor2],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        SnackBar(
+          content: Text("Error submitting feedback: $e"),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
-        onPressed: onPressed,
-        child: const Text(
-          "Submit",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
+      );
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Use a gradient AppBar
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
         elevation: 0,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [_gradientColor1, _gradientColor2],
+              colors: [_primaryColor, _secondaryColor],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -200,118 +328,237 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         ),
         title: const Text(
           "Retreat Feedback",
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
         ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: Text(
+                    "About Your Feedback",
+                    style: TextStyle(
+                      color: _primaryColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: const Text(
+                    "Your feedback helps us improve future retreats and better understand the impact of our programs. All responses are confidential and valuable.",
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: _primaryColor,
+                      ),
+                      child: const Text("Got it"),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Form(
-            key: _formKey,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // 1) Overall Experience (1..10)
-                _buildLabel("1) On a scale from 1 to 10, how would you rate the overall experience of the retreat?"),
-                _buildSlider(
-                  minVal: 1,
-                  maxVal: 10,
-                  currentVal: _overallExperience,
-                  onChange: (val) => setState(() => _overallExperience = val),
+                // Introduction Card
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _primaryColor.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.feedback_outlined, color: _primaryColor, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          "We value your feedback! Your insights help us create better experiences for future participants.",
+                          style: TextStyle(
+                            fontSize: 14,
+                            height: 1.5,
+                            color: _textColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                // 2) Security/Support (1..10)
-                _buildLabel("2) On a scale from 1 to 10, how secure & supported did you feel? (1 = not at all, 10 = extremely)"),
-                _buildSlider(
-                  minVal: 1,
-                  maxVal: 10,
-                  currentVal: _securitySupport,
-                  onChange: (val) => setState(() => _securitySupport = val),
+
+                const SizedBox(height: 24),
+
+                // Overall Experience Section
+                _buildFormSection(
+                  "Overall Experience",
+                  [
+                    _buildRatingSection(
+                      title: "How would you rate your overall experience?",
+                      description: "1 = Poor, 10 = Excellent",
+                      value: _overallExperience,
+                      onChanged: (value) => setState(() => _overallExperience = value),
+                      min: 1,
+                      max: 10,
+                      icon: Icons.star_outline,
+                    ),
+                    _buildRatingSection(
+                      title: "How secure and supported did you feel?",
+                      description: "1 = Not at all, 10 = Completely",
+                      value: _securitySupport,
+                      onChanged: (value) => setState(() => _securitySupport = value),
+                      min: 1,
+                      max: 10,
+                      icon: Icons.security,
+                    ),
+                    _buildTextField(
+                      controller: _enhanceSecurityCtrl,
+                      label: "What could enhance your sense of security?",
+                      hintText: "Share your suggestions...",
+                      icon: Icons.psychology,
+                    ),
+                  ],
                 ),
-                // 3) Enhance sense of security?
-                _buildLabel("3) What could have enhanced your sense of security or comfort?"),
-                _buildGradientTextField(
-                  controller: _enhanceSecurityCtrl,
-                  hintText: "Share your ideas...",
+
+                // Group Experience Section
+                _buildFormSection(
+                  "Group Experience",
+                  [
+                    _buildTextField(
+                      controller: _smallGroupFeedbackCtrl,
+                      label: "How was your small group experience?",
+                      hintText: "Share your thoughts about group dynamics...",
+                      icon: Icons.groups,
+                    ),
+                    _buildRatingSection(
+                      title: "Balance of group activities vs free time",
+                      description: "0 = Too many group activities, 10 = Too much free time",
+                      value: _groupVsFreeTime,
+                      onChanged: (value) => setState(() => _groupVsFreeTime = value),
+                      min: 0,
+                      max: 10,
+                      icon: Icons.balance,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                // 4) Feedback about small group
-                _buildLabel("4) Any particular feedback about your small group?"),
-                _buildGradientTextField(
-                  controller: _smallGroupFeedbackCtrl,
-                  hintText: "Thoughts about small group dynamics...",
+
+                // Highlights and Challenges Section
+                _buildFormSection(
+                  "Highlights & Challenges",
+                  [
+                    _buildTextField(
+                      controller: _highlightCtrl,
+                      label: "What were your highlights?",
+                      hintText: "Share your favorite moments or insights...",
+                      icon: Icons.lightbulb_outline,
+                    ),
+                    _buildTextField(
+                      controller: _challengingCtrl,
+                      label: "What challenges did you face?",
+                      hintText: "Share any difficulties or concerns...",
+                      icon: Icons.trending_up,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                // 5) Facilitation feedback
-                _buildLabel("5) Facilitation: What was your experience of the team or individual facilitators?"),
-                _buildGradientTextField(
-                  controller: _facilitationFeedbackCtrl,
-                  hintText: "Share your facilitator feedback...",
+
+                // Facilities and Comfort Section
+                _buildFormSection(
+                  "Facilities & Accommodation",
+                  [
+                    _buildRatingSection(
+                      title: "How comfortable were the facilities?",
+                      description: "1 = Not comfortable, 10 = Extremely comfortable",
+                      value: _comfortFacilities,
+                      onChanged: (value) => setState(() => _comfortFacilities = value),
+                      min: 1,
+                      max: 10,
+                      icon: Icons.hotel,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                // 6) Highlight
-                _buildLabel("6) What stood out as a highlight for you?"),
-                _buildGradientTextField(
-                  controller: _highlightCtrl,
-                  hintText: "Favorite moment, reflection, or insight?",
+
+                // Improvements and Recommendations Section
+                _buildFormSection(
+                  "Improvements & Recommendations",
+                  [
+                    _buildTextField(
+                      controller: _makeBetterCtrl,
+                      label: "How can we improve?",
+                      hintText: "Share your suggestions for future retreats...",
+                      icon: Icons.auto_fix_high,
+                    ),
+                    _buildTextField(
+                      controller: _recommendationCtrl,
+                      label: "Would you recommend this retreat?",
+                      hintText: "Tell us why or why not...",
+                      icon: Icons.recommend,
+                    ),
+                    _buildTextField(
+                      controller: _additionalThoughtsCtrl,
+                      label: "Additional Thoughts",
+                      hintText: "Any other feedback you'd like to share...",
+                      icon: Icons.more_horiz,
+                      maxLines: 4,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                // 7) Challenging
-                _buildLabel("7) Any parts you didn't vibe with or found challenging?"),
-                _buildGradientTextField(
-                  controller: _challengingCtrl,
-                  hintText: "What was difficult for you?",
+
+                const SizedBox(height: 24),
+
+                // Submit Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: _primaryColor,
+                      elevation: 5,
+                      shadowColor: _primaryColor.withOpacity(0.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: _isSubmitting ? null : _submitFeedback,
+                    child: _isSubmitting
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.send_rounded),
+                        SizedBox(width: 8),
+                        Text(
+                          "SUBMIT FEEDBACK",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 20),
-                // 8) Group vs Personal Time (0..10)
-                _buildLabel("8) How did you feel about the balance between group activities & free time? (0 = too many group activities, 10 = too much free time)"),
-                _buildSlider(
-                  minVal: 0,
-                  maxVal: 10,
-                  currentVal: _groupVsFreeTime,
-                  onChange: (val) => setState(() => _groupVsFreeTime = val),
-                ),
-                // 9) Atmosphere among participants
-                _buildLabel("9) How would you describe the atmosphere & dynamics among participants?"),
-                _buildGradientTextField(
-                  hintText: "Group synergy, vibe, conflicts, positivity?",
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 20),
-                // 10) Comfort of accommodations/facilities
-                _buildLabel("10) Rate your comfort with the accommodations/facilities (1..10)"),
-                _buildSlider(
-                  minVal: 1,
-                  maxVal: 10,
-                  currentVal: _comfortFacilities,
-                  onChange: (val) => setState(() => _comfortFacilities = val),
-                ),
-                // 11) Make better
-                _buildLabel("11) How can we make our next retreat better for attendees like you?"),
-                _buildGradientTextField(
-                  controller: _makeBetterCtrl,
-                  hintText: "Any suggestions, improvements, or new ideas?",
-                ),
-                const SizedBox(height: 20),
-                // 12) Recommendation
-                _buildLabel("12) Would you suggest these retreats to your circle? Why or why not?"),
-                _buildGradientTextField(
-                  controller: _recommendationCtrl,
-                  hintText: "Yes, no, maybe so? Let us know why.",
-                ),
-                const SizedBox(height: 20),
-                // 13) Additional thoughts
-                _buildLabel("13) Any additional thoughts? Could be about the venue, meals, recommended reads, etc."),
-                _buildGradientTextField(
-                  controller: _additionalThoughtsCtrl,
-                  hintText: "Feel free to expand on any other topics...",
-                  maxLines: 4,
-                ),
-                const SizedBox(height: 20),
-                // Submit button using gradient style
-                _buildGradientButton(
-                  text: "Submit",
-                  onPressed: _submitFeedback,
-                ),
-                const SizedBox(height: 20),
+
+                const SizedBox(height: 40),
               ],
             ),
           ),

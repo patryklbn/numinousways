@@ -45,22 +45,29 @@ class ProfileService {
     }
   }
 
-  // Upload profile image and return download URL
+
+// Upload profile image and return download URL (always override existing)
   Future<String?> uploadProfileImage(File imageFile, String userId) async {
     try {
+      // Compress the image first
       File compressedImage = await compressImage(imageFile);
-      final storageRef = _storage.ref().child('profile_images/$userId');
+
+      // Use a consistent filename for overriding - 'profile.jpg'
+      final fileName = 'profile.jpg';
+
+      // Reference to the storage path with userId and fixed filename
+      final storageRef = _storage.ref().child('profile_images/$userId/$fileName');
+
+      // This will override any existing file at this path
       await storageRef.putFile(compressedImage);
+
+      // Get the download URL (with cache busting parameter)
       final downloadUrl = await storageRef.getDownloadURL();
 
-      // Update Firestore with new image URL
-      final userProfile = await getUserProfile(userId);
-      if (userProfile != null) {
-        userProfile.profileImageUrl = downloadUrl;
-        await updateUserProfile(userProfile);
-      }
+      // Return a URL with cache-busting parameter to prevent showing old images
+      final cacheBustedUrl = '$downloadUrl?t=${DateTime.now().millisecondsSinceEpoch}';
 
-      return downloadUrl;
+      return cacheBustedUrl;
     } on FirebaseException catch (e) {
       print("FirebaseException in uploadProfileImage: $e");
       return null;

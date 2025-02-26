@@ -7,10 +7,84 @@ import '../../models/facilitator.dart';
 import '../../models/venue.dart';
 import '../../services/myretreat_service.dart';
 import '../../services/login_provider.dart';
-import '../../screens/full_screen_image_viewer.dart';
 import '../login/login_screen.dart';
 import '/widgets/app_drawer.dart';
 import 'facilitator_profile_screen.dart';
+
+class GalleryViewer extends StatefulWidget {
+  final List<String> images;
+  final int initialIndex;
+  final String title;
+
+  const GalleryViewer({
+    Key? key,
+    required this.images,
+    required this.initialIndex,
+    required this.title,
+  }) : super(key: key);
+
+  @override
+  State<GalleryViewer> createState() => _GalleryViewerState();
+}
+
+class _GalleryViewerState extends State<GalleryViewer> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.black.withOpacity(0.5),
+        elevation: 0,
+        title: Text(
+          '${widget.title} (${_currentIndex + 1}/${widget.images.length})',
+          style: const TextStyle(fontSize: 16),
+        ),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.images.length,
+        onPageChanged: (index) => setState(() => _currentIndex = index),
+        itemBuilder: (context, index) {
+          return Hero(
+            tag: '${widget.title}-$index',
+            child: InteractiveViewer(
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: CachedNetworkImage(
+                imageUrl: widget.images[index],
+                placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+                errorWidget: (context, url, error) => const Icon(
+                  Icons.error,
+                  color: Colors.white,
+                ),
+                fit: BoxFit.contain,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
 class MyRetreatScreen extends StatelessWidget {
   const MyRetreatScreen({Key? key}) : super(key: key);
@@ -36,7 +110,7 @@ class MyRetreatScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      drawer: const AppDrawer(), // side menu
+      drawer: const AppDrawer(),
       body: CustomScrollView(
         slivers: [
           _buildSliverAppBar(context),
@@ -48,7 +122,10 @@ class MyRetreatScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: AnimationConfiguration.toStaggeredList(
                     duration: const Duration(milliseconds: 500),
-                    childAnimationBuilder: (widget) => FadeInAnimation(child: widget),
+                    childAnimationBuilder: (widget) => SlideAnimation(
+                      verticalOffset: 50.0,
+                      child: FadeInAnimation(child: widget),
+                    ),
                     children: [
                       _buildIntroText(context),
                       const SizedBox(height: 24),
@@ -65,7 +142,7 @@ class MyRetreatScreen extends StatelessWidget {
                       _buildVenuesSection(
                         'Netherlands',
                         context,
-                        'Our Netherlands location is a sanctuary amidst luscious green spaces where nature’s embrace invites tranquillity and rejuvenation.',
+                        'Our Netherlands location is a sanctuary amidst luscious green spaces where nature embrace invites tranquillity and rejuvenation.',
                         myRetreatService,
                         currentUserId,
                       ),
@@ -88,6 +165,7 @@ class MyRetreatScreen extends StatelessWidget {
       expandedHeight: 250.0,
       floating: false,
       pinned: true,
+      elevation: 0,
       backgroundColor: const Color(0xFFB4347F),
       flexibleSpace: FlexibleSpaceBar(
         title: const Text(
@@ -107,11 +185,25 @@ class MyRetreatScreen extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(
-              'assets/images/myretreat/myretreathero.png',
-              fit: BoxFit.cover,
+            Hero(
+              tag: 'retreat-hero',
+              child: Image.asset(
+                'assets/images/myretreat/myretreathero.png',
+                fit: BoxFit.cover,
+              ),
             ),
-            Container(color: Colors.black.withOpacity(0.3)),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.2),
+                    Colors.black.withOpacity(0.5),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -119,21 +211,28 @@ class MyRetreatScreen extends StatelessWidget {
   }
 
   Widget _buildIntroText(BuildContext context) {
-    return const Text(
-      'At Numinous Way, our retreats seamlessly guide you through essential preparation, immersive experiences, and mindful integration. With curated tasks, transformative exercises, and supportive environments, we create a nurturing space for profound personal growth and self-discovery.',
-      style: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        fontFamily: 'Roboto',
-        color: Colors.black87,
-        height: 1.6,
-        shadows: [
-          Shadow(
-            offset: Offset(0, 1),
-            blurRadius: 2.0,
-            color: Colors.black12,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: const Text(
+        'At Numinous Way, our retreats seamlessly guide you through essential preparation, immersive experiences, and mindful integration. With curated tasks, transformative exercises, and supportive environments, we create a nurturing space for profound personal growth and self-discovery.',
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'Roboto',
+          color: Colors.black87,
+          height: 1.6,
+        ),
       ),
     );
   }
@@ -200,95 +299,95 @@ class MyRetreatScreen extends StatelessWidget {
     required double width,
     bool isLarge = false,
   }) {
-    // Use different background images for each card
     String backgroundImage;
     if (title == 'Preparation') {
       backgroundImage = 'assets/images/myretreat/preparation.png';
     } else if (title == 'Experience') {
       backgroundImage = 'assets/images/myretreat/experience.png';
-    } else if (title == 'Integration') {
-      backgroundImage = 'assets/images/myretreat/integration.png';
     } else {
-      backgroundImage = '';
+      backgroundImage = 'assets/images/myretreat/integration.png';
     }
 
-    double titleFontSize = isLarge ? 20 : 18;
-    double descriptionFontSize = isLarge ? 18 : 16;
-    double iconSize = isLarge ? 50 : 40;
-    double overlayOpacity = 0.3;
-
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, routeName),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
+    return Hero(
+      tag: 'feature-$title',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => Navigator.pushNamed(context, routeName),
           borderRadius: BorderRadius.circular(isLarge ? 16 : 12),
-          boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black12)],
-          image: backgroundImage.isNotEmpty
-              ? DecorationImage(
-            image: AssetImage(backgroundImage),
-            fit: BoxFit.cover,
-            colorFilter: ColorFilter.mode(
-              Colors.black.withOpacity(overlayOpacity),
-              BlendMode.darken,
-            ),
-          )
-              : null,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: iconSize,
-              color: Colors.white,
-            ),
-            SizedBox(height: isLarge ? 16 : 12),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: titleFontSize,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                shadows: const [
-                  Shadow(
-                    offset: Offset(1, 1),
-                    blurRadius: 2,
-                    color: Colors.black54,
-                  ),
-                ],
+          child: Ink(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(isLarge ? 16 : 12),
+              image: DecorationImage(
+                image: AssetImage(backgroundImage),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.3),
+                  BlendMode.darken,
+                ),
               ),
-              textAlign: TextAlign.center,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              style: TextStyle(
-                fontSize: descriptionFontSize,
-                color: Colors.white.withOpacity(0.95),
-                fontWeight: FontWeight.w500,
-                shadows: const [
-                  Shadow(
-                    offset: Offset(1, 1),
-                    blurRadius: 2,
-                    color: Colors.black54,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: isLarge ? 50 : 40,
+                  color: Colors.white,
+                ),
+                SizedBox(height: isLarge ? 16 : 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isLarge ? 20 : 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    shadows: const [
+                      Shadow(
+                        offset: Offset(1, 1),
+                        blurRadius: 2,
+                        color: Colors.black54,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: isLarge ? 18 : 16,
+                    color: Colors.white.withOpacity(0.95),
+                    fontWeight: FontWeight.w500,
+                    shadows: const [
+                      Shadow(
+                        offset: Offset(1, 1),
+                        blurRadius: 2,
+                        color: Colors.black54,
+                      ),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  /// Build a section to preview a venue
-  /// We'll show only the first 5 images from `venue.images` in a horizontal list
   Widget _buildVenuesSection(
       String title,
       BuildContext context,
@@ -317,7 +416,9 @@ class MyRetreatScreen extends StatelessWidget {
             }
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const CircularProgressIndicator();
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
             }
 
             final venues = snapshot.data!;
@@ -330,53 +431,63 @@ class MyRetreatScreen extends StatelessWidget {
             }
 
             final venue = filteredVenues.first;
-
-            // Only show first 5 images
-            final displayedImages = venue.images.length > 5
-                ? venue.images.sublist(0, 5)
-                : venue.images;
+            final images = venue.images;
 
             return SizedBox(
               height: 120,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: displayedImages.length,
+                itemCount: images.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
-                  final imageUrl = displayedImages[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FullScreenImageViewer(
-                            imageUrl: imageUrl,
-                            tag: '$title-$index',
-                          ),
-                        ),
-                      );
-                    },
-                    child: Hero(
-                      tag: '$title-$index',
-                      child: ClipRRect(
+                  final imageUrl = images[index];
+                  return Hero(
+                    tag: '$title-$index',
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            PageRouteBuilder(
+                              pageBuilder: (context, animation, secondaryAnimation) =>
+                                  GalleryViewer(
+                                    images: images,
+                                    initialIndex: index,
+                                    title: title,
+                                  ),
+                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: child,
+                                );
+                              },
+                            ),
+                          );
+                        },
                         borderRadius: BorderRadius.circular(8),
-                        child: CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          placeholder: (context, url) => Container(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            placeholder: (context, url) => Container(
+                              width: 150,
+                              height: 120,
+                              color: Colors.grey[300],
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              width: 150,
+                              height: 120,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.error),
+                            ),
                             width: 150,
                             height: 120,
-                            color: Colors.grey[300],
-                            child: const Center(child: CircularProgressIndicator()),
+                            fit: BoxFit.cover,
                           ),
-                          errorWidget: (context, url, error) => Container(
-                            width: 150,
-                            height: 120,
-                            color: Colors.grey[300],
-                            child: const Icon(Icons.error),
-                          ),
-                          width: 150,
-                          height: 120,
-                          fit: BoxFit.cover,
                         ),
                       ),
                     ),
@@ -416,7 +527,9 @@ class MyRetreatScreen extends StatelessWidget {
             }
 
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const CircularProgressIndicator();
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
             }
 
             final facilitators = snapshot.data!;
@@ -429,47 +542,68 @@ class MyRetreatScreen extends StatelessWidget {
                 separatorBuilder: (context, index) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
                   final facilitator = facilitators[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => FacilitatorProfileScreen(
-                            facilitator: facilitator,
+                  return AnimationConfiguration.staggeredList(
+                    position: index,
+                    duration: const Duration(milliseconds: 400),
+                    child: SlideAnimation(
+                      horizontalOffset: 50.0,
+                      child: FadeInAnimation(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                PageRouteBuilder(
+                                  pageBuilder: (context, animation, secondaryAnimation) =>
+                                      FacilitatorProfileScreen(facilitator: facilitator),
+                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                    return FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Hero(
+                                  tag: 'facilitator-${facilitator.id}',
+                                  child: CircleAvatar(
+                                    radius: 40,
+                                    backgroundColor: Colors.grey[200],
+                                    backgroundImage: CachedNetworkImageProvider(
+                                      facilitator.photoUrl,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  facilitator.name,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  facilitator.role,
+                                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      );
-                    },
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 40,
-                          backgroundColor: Colors.grey[200],
-                          backgroundImage: CachedNetworkImageProvider(
-                            facilitator.photoUrl,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          facilitator.name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          facilitator.role,
-                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                      ),
                     ),
                   );
                 },

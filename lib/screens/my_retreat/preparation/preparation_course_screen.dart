@@ -8,7 +8,6 @@ import '/screens/my_retreat/preparation/pps_form_screen.dart';
 import 'package:numinous_way/viewmodels/preparation_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-
 class PreparationCourseScreen extends StatefulWidget {
   @override
   _PreparationCourseScreenState createState() => _PreparationCourseScreenState();
@@ -18,7 +17,7 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
   @override
   void initState() {
     super.initState();
-    // Load the data once, or you could do this in a FutureBuilder
+    // Load the data once when the screen is first built.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PreparationProvider>().loadData();
     });
@@ -29,23 +28,20 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
     final prepVM = context.watch<PreparationProvider>();
     final accentColor = const Color(0xFFB4347F);
 
-    // A pull-to-refresh calls prepVM.loadData()
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () => prepVM.loadData(),
         child: CustomScrollView(
           slivers: [
-            // 1) The hero header + "Start Course" button stack
+            // 1) Hero header with the "Start Course" button
             SliverToBoxAdapter(
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   _buildHeroHeader(accentColor),
-                  // The button is only shown if user hasn't started
-                  if (prepVM.userStartDate == null &&
-                      !prepVM.hasUserClickedStart)
+                  if (prepVM.userStartDate == null && !prepVM.hasUserClickedStart)
                     Positioned(
-                      bottom: -30, // negative offset for overlay
+                      bottom: -30, // Negative offset to overlay the button
                       right: 20,
                       child: ElevatedButton(
                         onPressed: prepVM.startCourse,
@@ -73,8 +69,7 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
                 ],
               ),
             ),
-
-            // 2) Body content (padding depends on the button presence)
+            // 2) Body content with animated padding
             SliverToBoxAdapter(
               child: AnimatedPadding(
                 padding: EdgeInsets.fromLTRB(
@@ -96,7 +91,7 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
     );
   }
 
-  /// The top "hero" header that is 250px high, with a background image and back button
+  /// Builds the hero header with a background image and back button.
   Widget _buildHeroHeader(Color accentColor) {
     return ClipRRect(
       borderRadius: const BorderRadius.only(
@@ -149,9 +144,48 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
     );
   }
 
-  /// The body content: the introduction text, progress bar, and the modules list
+  /// New progress bar widget matching the Integration screen style.
+  Widget _buildProgressSection(double progressValue, int completedCount, Color accentColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: progressValue,
+            backgroundColor: accentColor.withOpacity(0.1),
+            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+            minHeight: 8,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "$completedCount/21 days completed",
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: accentColor,
+              ),
+            ),
+            Text(
+              "${(progressValue * 100).toInt()}% complete",
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: accentColor,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Builds the main body content with introduction, progress bar, and module list.
   Widget _buildBodyContent(PreparationProvider prepVM, Color accentColor) {
-    // Show loading indicator or error
     if (prepVM.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -164,78 +198,52 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
       );
     }
 
-    // If data loaded
     final modules = prepVM.allModules;
     final userStartDate = prepVM.userStartDate;
 
-    // Compute progress for days 1..21
-    final mainModules = modules.where((m) =>
-    m.dayNumber >= 1 && m.dayNumber <= 21).toList();
-    final completedCount = mainModules
-        .where((m) => m.isCompleted)
-        .length;
+    // Compute progress for modules 1 to 21.
+    final mainModules = modules.where((m) => m.dayNumber >= 1 && m.dayNumber <= 21).toList();
+    final completedCount = mainModules.where((m) => m.isCompleted).length;
     const totalModules = 21;
     final progressValue = completedCount / totalModules;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // "Prepare for Your Journey" heading
         Text(
           "Prepare for Your Journey",
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 24,
             fontWeight: FontWeight.bold,
             color: accentColor,
+            height: 1.2,
           ),
         ),
-        const SizedBox(height: 8),
-
-        // Original description text
+        const SizedBox(height: 12),
         const Text(
-          "Complete this 21-day course with exercises, tasks, and meditations "
-              "to thoroughly prepare yourself for your upcoming journey. This structured "
-              "approach ensures you are mentally, emotionally, and spiritually ready.",
+          "Complete this 21-day course with exercises, tasks, and meditations to thoroughly prepare yourself for your upcoming journey. This structured approach ensures you are mentally, emotionally, and spiritually ready.",
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w400,
             height: 1.5,
           ),
         ),
-
         const SizedBox(height: 24),
-
-        // Show progress if user has started the course
         if (userStartDate != null) ...[
-          LinearProgressIndicator(
-            value: progressValue,
-            backgroundColor: Colors.grey[300],
-            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "$completedCount/$totalModules days completed",
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          _buildProgressSection(progressValue, completedCount, accentColor),
           const SizedBox(height: 20),
         ],
-
-        // List of modules
         Column(
           children: modules.map((module) {
             final isLast = module.dayNumber == modules.last.dayNumber;
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // The vertical line & icon timeline
+                // Timeline: vertical line and icon.
                 SizedBox(
                   width: 40,
                   child: Column(
                     children: [
-                      // If not the first module, show the line above
                       if (module.dayNumber != modules.first.dayNumber)
                         Container(
                           width: 2,
@@ -245,14 +253,9 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
                       Icon(
                         module.isLocked
                             ? Icons.lock
-                            : (module.isCompleted
-                            ? Icons.check_circle_outline
-                            : Icons.lock_open_outlined),
-                        color: module.isLocked
-                            ? Colors.grey
-                            : (module.isCompleted ? Colors.green : accentColor),
+                            : (module.isCompleted ? Icons.check_circle_outline : Icons.lock_open_outlined),
+                        color: module.isLocked ? Colors.grey : (module.isCompleted ? Colors.green : accentColor),
                       ),
-                      // If not the last module, show the line below
                       if (!isLast)
                         Container(
                           width: 2,
@@ -262,7 +265,7 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
                     ],
                   ),
                 ),
-                // The day card
+                // Module card.
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 8.0, bottom: 16.0),
@@ -280,21 +283,19 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
     );
   }
 
-  /// Called when user taps a module tile in the list
-  Future<void> _onModuleTap(PreparationProvider prepVM,
-      DayModule module) async {
-    if (module.isLocked) return; // do nothing if locked
+  /// Called when a module tile is tapped.
+  Future<void> _onModuleTap(PreparationProvider prepVM, DayModule module) async {
+    if (module.isLocked) return; // Do nothing if the module is locked.
 
-    // Day 0 => PPS (Before)
+    // Handle special cases for Day 0 and Day 22.
     if (module.dayNumber == 0) {
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              PPSFormScreen(
-                isBeforeCourse: true,
-                userId: prepVM.userId,
-              ),
+          builder: (_) => PPSFormScreen(
+            isBeforeCourse: true,
+            userId: prepVM.userId,
+          ),
         ),
       );
       if (result == true) {
@@ -303,16 +304,14 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
       return;
     }
 
-    // Day 22 => PPS (After)
     if (module.dayNumber == 22) {
       final ppsResult = await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              PPSFormScreen(
-                isBeforeCourse: false,
-                userId: prepVM.userId,
-              ),
+          builder: (_) => PPSFormScreen(
+            isBeforeCourse: false,
+            userId: prepVM.userId,
+          ),
         ),
       );
       if (ppsResult == true) {
@@ -321,24 +320,22 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
       return;
     }
 
-// Normal day detail
+    // Normal day detail navigation.
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            ChangeNotifierProvider<DayDetailProvider>(
-              create: (_) =>
-                  DayDetailProvider(
-                    dayNumber: module.dayNumber,
-                    isDayCompletedInitially: module.isCompleted,
-                    firestoreInstance: FirebaseFirestore.instance,
-                    userId: prepVM.userId!, // Ensure this value is available
-                  ),
-              child: DayDetailScreen(
-                dayNumber: module.dayNumber,
-                isDayCompleted: module.isCompleted,
-              ),
-            ),
+        builder: (_) => ChangeNotifierProvider<DayDetailProvider>(
+          create: (_) => DayDetailProvider(
+            dayNumber: module.dayNumber,
+            isDayCompletedInitially: module.isCompleted,
+            firestoreInstance: FirebaseFirestore.instance,
+            userId: prepVM.userId!,
+          ),
+          child: DayDetailScreen(
+            dayNumber: module.dayNumber,
+            isDayCompleted: module.isCompleted,
+          ),
+        ),
       ),
     );
     if (result == true) {

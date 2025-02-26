@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:numinous_way/services/retreat_service.dart';
 import 'package:provider/provider.dart';
 
 // Firebase config
@@ -12,6 +11,7 @@ import 'firebase_options.dart';
 // Screens
 import 'screens/ai_gallery/ai_gallery_screen.dart';
 import 'screens/ai_gallery/ai_prompt_screen.dart';
+import 'screens/my_retreat/integration/integration_detail_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
 import 'screens/login/login_screen.dart';
 import 'screens/login/register_screen.dart';
@@ -23,21 +23,25 @@ import 'screens/my_retreat/my_retreat_screen.dart';
 import 'screens/my_retreat/retreat_info_screen.dart';
 import 'screens/my_retreat/preparation/preparation_course_screen.dart';
 import 'screens/my_retreat/preparation/day_detail_screen.dart';
+import 'screens/my_retreat/integration/integration_course_screen.dart';
+import 'screens/my_retreat/integration/integration_detail_screen.dart';
 import 'screens/main_app_with_drawer.dart';
 import 'screens/my_retreat/experience/experience_main_screen.dart';
 
 // ViewModels / Providers
+import 'services/integration_course_service.dart';
 import 'services/login_provider.dart';
 import 'services/myretreat_service.dart';
 import 'services/firestore_service.dart';
+import 'services/retreat_service.dart';
 import 'services/storage_service.dart';
+import 'viewmodels/integration_provider.dart';
 import 'viewmodels/profile_viewmodel.dart';
 import 'services/notification_service.dart';
 import 'services/preparation_course_service.dart';
 import 'viewmodels/preparation_provider.dart';
 import 'viewmodels/day_detail_provider.dart';
-
-// Experience Provider
+import 'viewmodels/integration_day_detail_provider.dart';
 import 'viewmodels/experience_provider.dart';
 
 void main() async {
@@ -45,17 +49,20 @@ void main() async {
   await initializeFirebase();
 
   final notificationService = NotificationService();
-  await notificationService.init(); // Initialize notifications here!
+  await notificationService.init();
 
   runApp(
     MultiProvider(
       providers: [
         // Notification Service
         Provider<NotificationService>.value(value: notificationService),
+
         // Profile ViewModel
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+
         // Login Provider
         ChangeNotifierProvider(create: (_) => LoginProvider()),
+
         // MyRetreat Service
         Provider(
           create: (_) => MyRetreatService(
@@ -63,9 +70,11 @@ void main() async {
             storageService: StorageService(),
           ),
         ),
+
         // Retreat Service provider
         Provider<RetreatService>(create: (_) => RetreatService()),
-        // Experience Provider (depends on LoginProvider & RetreatService)
+
+        // Experience Provider
         ChangeNotifierProxyProvider<LoginProvider, ExperienceProvider>(
           create: (context) => ExperienceProvider(
             retreatService: context.read<RetreatService>(),
@@ -77,13 +86,24 @@ void main() async {
                 userId: loginProvider.userId,
               ),
         ),
+
+        // Integration Provider
+        ChangeNotifierProxyProvider<LoginProvider, IntegrationProvider>(
+          create: (context) => IntegrationProvider(
+            userId: context.read<LoginProvider>().userId ?? '',
+            integrationService: IntegrationCourseService(FirebaseFirestore.instance),
+          ),
+          update: (context, loginProvider, _) => IntegrationProvider(
+            userId: loginProvider.userId ?? '',
+            integrationService: IntegrationCourseService(FirebaseFirestore.instance),
+          ),
+        ),
       ],
       child: const MyApp(),
     ),
   );
 }
 
-/// Firebase initialization
 Future<void> initializeFirebase() async {
   try {
     await Firebase.initializeApp(
@@ -119,9 +139,6 @@ class MyApp extends StatelessWidget {
     }
 
     // If user is logged in => go to main flow
-    print("Navigating to TimelineScreen with userId: ${loginProvider.userId}");
-
-    // Provide the PreparationProvider for all child widgets
     return ChangeNotifierProvider<PreparationProvider>(
       create: (_) => PreparationProvider(
         userId: loginProvider.userId!,
@@ -132,6 +149,7 @@ class MyApp extends StatelessWidget {
         theme: _buildTheme(),
         home: TimelineScreen(),
         onGenerateRoute: (settings) {
+          // Preparation day detail route
           if (settings.name == '/day_detail') {
             final args = settings.arguments as Map<String, dynamic>;
             final int dayNumber = args['dayNumber'] as int;
@@ -153,8 +171,29 @@ class MyApp extends StatelessWidget {
             );
           }
 
+          // Integration day detail route
+          if (settings.name == '/integration_day_detail') {
+            final args = settings.arguments as Map<String, dynamic>;
+            final int dayNumber = args['dayNumber'] as int;
+            final bool isDayCompleted = args['isDayCompleted'] as bool;
 
-          return null; // Unknown route => fallback
+            return MaterialPageRoute(
+              builder: (context) => ChangeNotifierProvider<IntegrationDayDetailProvider>(
+                create: (_) => IntegrationDayDetailProvider(
+                  dayNumber: dayNumber,
+                  isDayCompletedInitially: isDayCompleted,
+                  firestoreInstance: FirebaseFirestore.instance,
+                  userId: loginProvider.userId!,
+                ),
+                child: IntegrationDayDetailScreen(
+                  dayNumber: dayNumber,
+                  isDayCompleted: isDayCompleted,
+                ),
+              ),
+            );
+          }
+
+          return null;
         },
         routes: {
           '/onboarding': (context) => OnboardingScreen(),
@@ -173,6 +212,7 @@ class MyApp extends StatelessWidget {
           '/retreat_info': (context) => RetreatInfoScreen(),
           '/preparation': (context) => PreparationCourseScreen(),
           '/experience': (context) => ExperienceMainScreen(),
+          '/integration': (context) => IntegrationCourseScreen(),
           '/ai_gallery': (context) => AiGalleryScreen(),
           '/ai_prompt': (context) => const AiPromptScreen(),
         },

@@ -6,11 +6,16 @@ class DayModuleCard extends StatelessWidget {
   final VoidCallback? onTap;
   final String? heroTag;
 
-  const DayModuleCard({Key? key, required this.module, this.onTap, this.heroTag}) : super(key: key);
+  const DayModuleCard({
+    Key? key,
+    required this.module,
+    this.onTap,
+    this.heroTag
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = Color(0xFFB4347F);
+    final accentColor = Color(0xFF2E7D32); // Dark green instead of pink
 
     IconData iconData;
     Color iconColor = Colors.white;
@@ -22,7 +27,7 @@ class DayModuleCard extends StatelessWidget {
       iconData = Icons.check_circle_outline;
       iconColor = Colors.white;
     } else {
-      iconData = Icons.lock_open_outlined;
+      iconData = Icons.self_improvement; // Changed to mindfulness icon
       iconColor = Colors.white;
     }
 
@@ -42,12 +47,20 @@ class DayModuleCard extends StatelessWidget {
           ),
         ],
         image: DecorationImage(
-          image: AssetImage('assets/images/myretreat/daymodule.png'),
+          image: AssetImage('assets/images/myretreat/integration_module.png'),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.black.withOpacity(0.2),
             BlendMode.darken,
           ),
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accentColor.withOpacity(0.8),
+            Color(0xFF1B5E20).withOpacity(0.9), // Darker green
+          ],
         ),
       ),
       child: Row(
@@ -74,6 +87,23 @@ class DayModuleCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                SizedBox(height: 4),
+                Text(
+                  module.description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.9),
+                    shadows: [
+                      Shadow(
+                        offset: Offset(1, 1),
+                        blurRadius: 3,
+                        color: Colors.black45,
+                      ),
+                    ],
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -95,25 +125,17 @@ class DayModuleCard extends StatelessWidget {
       opacity: module.isLocked ? 0.5 : 1.0,
       child: InkWell(
         onTap: module.isLocked ? null : onTap,
+        borderRadius: BorderRadius.circular(12),
         child: content,
       ),
     );
   }
 
   Widget _buildModuleHeader() {
-    String dayLabel;
-    if (module.dayNumber == 0) {
-      dayLabel = "Day 0";
-    } else if (module.dayNumber == 22) {
-      dayLabel = "Day 22";
-    } else {
-      dayLabel = "Day ${module.dayNumber}";
-    }
-
     return Row(
       children: [
         Text(
-          dayLabel,
+          "Day ${module.dayNumber}",
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
