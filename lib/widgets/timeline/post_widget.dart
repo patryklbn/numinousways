@@ -17,7 +17,6 @@ class PostWidget extends StatefulWidget {
   final Function(Post updatedPost)? onPostLikeToggled;
   final bool truncateText;
   final int? maxLines;
-  // Add a user profile parameter to avoid refetching
   final UserProfile? userProfile;
 
   const PostWidget({
@@ -59,12 +58,9 @@ class _PostWidgetState extends State<PostWidget> {
   void didUpdateWidget(PostWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // Only update post data without touching user profile
     if (oldWidget.post.id == widget.post.id) {
       post = widget.post;
-    }
-    // If post ID changed, it's a completely different post
-    else {
+    } else {
       post = widget.post;
       user = widget.userProfile;
 
@@ -75,7 +71,6 @@ class _PostWidgetState extends State<PostWidget> {
       }
     }
 
-    // If we received a new user profile from parent
     if (widget.userProfile != null && widget.userProfile != user) {
       user = widget.userProfile;
       isUserLoading = false;
@@ -83,16 +78,24 @@ class _PostWidgetState extends State<PostWidget> {
   }
 
   Future<void> _loadUserProfile() async {
+    if (!mounted) return;
+
     setState(() {
       isUserLoading = true;
     });
 
     try {
       ProfileService profileService = ProfileService();
-      user = await profileService.getUserProfile(post.userId);
+      final fetchedUser = await profileService.getUserProfile(post.userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        user = fetchedUser;
+        isUserLoading = false;
+      });
     } catch (e) {
       print('Error loading user profile: $e');
-    } finally {
       if (mounted) {
         setState(() {
           isUserLoading = false;
@@ -101,33 +104,101 @@ class _PostWidgetState extends State<PostWidget> {
     }
   }
 
+  Future<void> _toggleLike(String currentUserId) async {
+    if (_isLikeInProgress) return;
+    _isLikeInProgress = true;
+
+    final bool wasLiked = post.isLiked;
+    final int previousLikesCount = post.likesCount;
+
+    // Optimistic update - only update the like state, keep everything else the same
+    setState(() {
+      post = post.copyWith(
+        isLiked: !wasLiked,
+        likesCount: wasLiked ? previousLikesCount - 1 : previousLikesCount + 1,
+      );
+    });
+
+    // Notify parent of optimistic update
+    if (widget.onPostLikeToggled != null) {
+      widget.onPostLikeToggled!(post);
+    }
+
+    try {
+      // Update backend with timeout, but don't replace the post object with the result
+      await timelineService.toggleLike(post.id, currentUserId)
+          .timeout(const Duration(seconds: 10));
+    } catch (e) {
+      // Revert on error if widget is still mounted
+      if (mounted) {
+        setState(() {
+          post = post.copyWith(
+            isLiked: wasLiked,
+            likesCount: previousLikesCount,
+          );
+        });
+
+        // Notify parent of reversion
+        if (widget.onPostLikeToggled != null) {
+          widget.onPostLikeToggled!(post);
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update like. Please try again.'),
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      // Reset loading state if widget is still mounted
+      if (mounted) {
+        setState(() {
+          _isLikeInProgress = false;
+        });
+      }
+    }
+  }
+
   void _deletePost(BuildContext context, String postId) async {
     try {
       await timelineService.deletePost(postId);
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Post deleted successfully.'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Color(0xFF6A0DAD),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          ),
         ),
       );
     } catch (e) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error deleting post: $e'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.red,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          ),
         ),
       );
     }
   }
 
   void _navigateToCommentsScreen(BuildContext context, String postId, {bool showFullPost = false}) {
-    if (widget.isCommentsScreenOpen.value) return; // Prevent multiple navigation
+    if (widget.isCommentsScreenOpen.value) return;
 
+    // Set value to true before navigation
     widget.isCommentsScreenOpen.value = true;
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -137,55 +208,9 @@ class _PostWidgetState extends State<PostWidget> {
         ),
       ),
     ).then((_) {
+      // Important: Always reset the flag when returning, regardless of mounted state
       widget.isCommentsScreenOpen.value = false;
     });
-  }
-
-  void _toggleLike(String currentUserId) async {
-    // Avoid multiple like operations at once
-    if (_isLikeInProgress) return;
-    _isLikeInProgress = true;
-
-    // Immediately update UI
-    setState(() {
-      post = post.copyWith(
-        isLiked: !post.isLiked,
-        likesCount: post.isLiked ? post.likesCount - 1 : post.likesCount + 1,
-      );
-    });
-
-    // Notify parent if needed
-    if (widget.onPostLikeToggled != null) {
-      widget.onPostLikeToggled!(post);
-    }
-
-    try {
-      // Update backend
-      await timelineService.toggleLike(post.id, currentUserId);
-    } catch (e) {
-      // Revert UI on error
-      setState(() {
-        post = post.copyWith(
-          isLiked: !post.isLiked,
-          likesCount: post.isLiked ? post.likesCount - 1 : post.likesCount + 1,
-        );
-      });
-
-      // Notify parent about the reversion
-      if (widget.onPostLikeToggled != null) {
-        widget.onPostLikeToggled!(post);
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating like: $e'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      _isLikeInProgress = false;
-    }
   }
 
   @override
@@ -196,7 +221,6 @@ class _PostWidgetState extends State<PostWidget> {
     // Check if text would overflow
     isTextOverflowing = false;
     if (widget.truncateText && post.content.isNotEmpty && widget.maxLines != null) {
-      // Create a text painter to measure if text would overflow
       final textSpan = TextSpan(
         text: post.content,
         style: const TextStyle(fontSize: 16, color: Color(0xFF333333)),
@@ -207,10 +231,7 @@ class _PostWidgetState extends State<PostWidget> {
         textDirection: TextDirection.ltr,
       );
 
-      // Layout with width constraint of screen minus padding
       textPainter.layout(maxWidth: MediaQuery.of(context).size.width - 64);
-
-      // Check if text exceeds maxLines
       isTextOverflowing = textPainter.didExceedMaxLines;
     }
 
@@ -293,26 +314,26 @@ class _PostWidgetState extends State<PostWidget> {
                   _deletePost(context, post.id);
                 }
               },
-              itemBuilder: (BuildContext context) {
-                return [
-                  PopupMenuItem<String>(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.delete, color: Colors.red),
-                        const SizedBox(width: 8),
-                        const Text('Delete Post'),
-                      ],
-                    ),
+              itemBuilder: (BuildContext context) => [
+                const PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete Post'),
+                    ],
                   ),
-                ];
-              },
+                ),
+              ],
             )
                 : null,
           ),
           if (post.content.isNotEmpty)
             GestureDetector(
-              onTap: isTextOverflowing ? () => _navigateToCommentsScreen(context, post.id, showFullPost: true) : null,
+              onTap: isTextOverflowing
+                  ? () => _navigateToCommentsScreen(context, post.id, showFullPost: true)
+                  : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(
@@ -325,12 +346,12 @@ class _PostWidgetState extends State<PostWidget> {
                       overflow: widget.truncateText ? TextOverflow.ellipsis : TextOverflow.visible,
                     ),
                     if (isTextOverflowing)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4.0, bottom: 8.0),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4.0, bottom: 8.0),
                         child: Text(
                           'Read more',
                           style: TextStyle(
-                            color: const Color(0xFF6A0DAD),
+                            color: Color(0xFF6A0DAD),
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
                           ),
@@ -352,7 +373,7 @@ class _PostWidgetState extends State<PostWidget> {
                     placeholder: (context, url) => Container(
                       height: 200,
                       color: Colors.grey[200],
-                      child: Center(
+                      child: const Center(
                         child: CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
                         ),
@@ -374,11 +395,12 @@ class _PostWidgetState extends State<PostWidget> {
             padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
             child: Row(
               children: [
-                // Like button with enhanced styling
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: (_isLikeInProgress || currentUserId == null) ? null : () => _toggleLike(currentUserId),
+                    onTap: (_isLikeInProgress || currentUserId == null)
+                        ? null
+                        : () => _toggleLike(currentUserId),
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -418,7 +440,6 @@ class _PostWidgetState extends State<PostWidget> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Comment button with enhanced styling
                 ValueListenableBuilder<bool>(
                   valueListenable: widget.isCommentsScreenOpen,
                   builder: (context, isDisabled, _) {
@@ -459,7 +480,6 @@ class _PostWidgetState extends State<PostWidget> {
               ],
             ),
           ),
-          // Divider at the bottom of each post instead of Card elevation
           Divider(
             height: 1,
             thickness: 1,
