@@ -25,20 +25,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   bool _isSubmitting = false;
   final ImagePicker _picker = ImagePicker();
   final int _maxCharacters = 280;
+  final ValueNotifier<int> _characterCount = ValueNotifier<int>(0);
 
   @override
   void initState() {
     super.initState();
-    _contentController.addListener(_updateCharacterCount);
-  }
-
-  void _updateCharacterCount() {
-    setState(() {}); // This will rebuild the widget to show the updated character count
+    _contentController.addListener(() {
+      _characterCount.value = _contentController.text.length;
+    });
   }
 
   @override
   void dispose() {
     _contentController.dispose();
+    _characterCount.dispose();
     super.dispose();
   }
 
@@ -213,275 +213,312 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     final loginProvider = Provider.of<LoginProvider>(context, listen: false);
     final String currentUserId = loginProvider.userId!;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Create Post",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return GestureDetector(
+      // Add horizontal swipe detection for going back
+      onHorizontalDragEnd: (details) {
+        // If the swipe is from left to right with sufficient velocity
+        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+          // Check if we can pop this route
+          if (Navigator.of(context).canPop()) {
+            // Pop the route to go back
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            "Create Post",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
             ),
           ),
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
         ),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: FutureBuilder<UserProfile?>(
-          future: ProfileService().getUserProfile(currentUserId),
-          builder: (context, snapshot) {
-            UserProfile? user = snapshot.data;
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: FutureBuilder<UserProfile?>(
+            future: ProfileService().getUserProfile(currentUserId),
+            builder: (context, snapshot) {
+              UserProfile? user = snapshot.data;
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: _isSubmitting
-                  ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF6A0DAD),
-                  ),
-                ),
-              )
-                  : Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Post Input Box with User Image
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20), // More modern rounded corners
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.2),
-                            spreadRadius: 2,
-                            blurRadius: 8, // Softer shadow
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // User Profile Picture with Circle Border
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: const Color(0xFFBA8FDB),
-                                    width: 2,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      spreadRadius: 1,
-                                      blurRadius: 3,
-                                      offset: const Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: CircleAvatar(
-                                  radius: 26,
-                                  backgroundColor: const Color(0xFFBA8FDB),
-                                  backgroundImage: user?.profileImageUrl != null
-                                      ? NetworkImage(user!.profileImageUrl!)
-                                      : null,
-                                  child: user?.profileImageUrl == null
-                                      ? const Icon(Icons.person, color: Colors.white, size: 24)
-                                      : null,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Post Input Field
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _contentController,
-                                  maxLines: 8,
-                                  maxLength: _maxCharacters,
-                                  style: const TextStyle(
-                                    fontSize: 16, // Slightly larger font
-                                  ),
-                                  decoration: const InputDecoration(
-                                    hintText: 'What\'s on your mind?',
-                                    border: InputBorder.none,
-                                    alignLabelWithHint: true,
-                                    counterText: "",
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.trim().isEmpty) {
-                                      return 'Post content cannot be empty';
-                                    }
-                                    return null;
-                                  },
-                                  onSaved: (value) {
-                                    _content = value!.trim();
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          // Character Counter and Add Image Button in the same row
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Add Image Button with light purple background
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEDE7F6), // Light purple background
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: TextButton.icon(
-                                  onPressed: _pickImage,
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  icon: const Icon(
-                                    Icons.image,
-                                    color: Color(0xFF6A0DAD),
-                                  ),
-                                  label: const Text(
-                                    'Add Image',
-                                    style: TextStyle(
-                                      color: Color(0xFF6A0DAD),
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Character Counter
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  '${_maxCharacters - _contentController.text.length} characters left',
-                                  style: TextStyle(
-                                    color: _contentController.text.length > _maxCharacters * 0.8
-                                        ? Colors.orange.shade700 // Changes color when approaching limit
-                                        : Colors.grey.shade700,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: _isSubmitting
+                    ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF6A0DAD),
                     ),
-                    const SizedBox(height: 20),
-                    // Display Selected Image
-                    if (_selectedImage != null)
-                      Stack(
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            height: 200,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16), // More rounded corners
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  spreadRadius: 1,
-                                  blurRadius: 5,
-                                  offset: const Offset(0, 2),
+                  ),
+                )
+                    : Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Post Input Box with User Image
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20), // More modern rounded corners
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.2),
+                              spreadRadius: 2,
+                              blurRadius: 8, // Softer shadow
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // User Profile Picture with Circle Border
+                                Container(
+                                  width: 56,
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0xFFBA8FDB),
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 26,
+                                    backgroundColor: const Color(0xFFBA8FDB),
+                                    backgroundImage: user?.profileImageUrl != null
+                                        ? NetworkImage(user!.profileImageUrl!)
+                                        : null,
+                                    child: user?.profileImageUrl == null
+                                        ? const Icon(Icons.person, color: Colors.white, size: 24)
+                                        : null,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Post Input Field
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _contentController,
+                                    maxLines: 8,
+                                    maxLength: _maxCharacters,
+                                    style: const TextStyle(
+                                      fontSize: 16, // Slightly larger font
+                                    ),
+                                    decoration: const InputDecoration(
+                                      hintText: 'What\'s on your mind?',
+                                      border: InputBorder.none,
+                                      alignLabelWithHint: true,
+                                      counterText: "",
+                                    ),
+                                    validator: (value) {
+                                      if (value == null || value.trim().isEmpty) {
+                                        return 'Post content cannot be empty';
+                                      }
+                                      return null;
+                                    },
+                                    onSaved: (value) {
+                                      _content = value!.trim();
+                                    },
+                                  ),
                                 ),
                               ],
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: Image.file(
-                                _selectedImage!,
-                                width: double.infinity,
-                                height: 200,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: GestureDetector(
-                              onTap: _removeImage,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.6),
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      spreadRadius: 1,
-                                      blurRadius: 3,
-                                      offset: const Offset(0, 1),
+                            const SizedBox(height: 16),
+                            // Character Counter and Add Image Button in the same row
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                // Add Image Button with light purple background
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEDE7F6), // Light purple background
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: TextButton.icon(
+                                    onPressed: _pickImage,
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                                     ),
-                                  ],
+                                    icon: const Icon(
+                                      Icons.image,
+                                      color: Color(0xFF6A0DAD),
+                                    ),
+                                    label: const Text(
+                                      'Add Image',
+                                      style: TextStyle(
+                                        color: Color(0xFF6A0DAD),
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                child: const Icon(
-                                  Icons.close,
-                                  color: Colors.white,
-                                  size: 20,
+                                // Character Counter
+                                ValueListenableBuilder<int>(
+                                  valueListenable: _characterCount,
+                                  builder: (context, count, _) {
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        '${_maxCharacters - count} characters left',
+                                        style: TextStyle(
+                                          color: count > _maxCharacters * 0.8
+                                              ? Colors.orange.shade700 // Changes color when approaching limit
+                                              : Colors.grey.shade700,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 30),
-                    // Enhanced Post Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56, // Taller button
-                      child: ElevatedButton.icon(
-                        onPressed: _submitPost,
-                        icon: const Icon(Icons.send, size: 22),
-                        label: const Text('Post'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6A0DAD),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16), // More rounded corners
-                          ),
-                          textStyle: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5, // Better letter spacing
-                          ),
-                          elevation: 8, // Increased elevation
-                          shadowColor: const Color(0xFF6A0DAD).withOpacity(0.5), // Shadow matching theme color
+                          ],
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 20),
+                      // Display Selected Image
+                      if (_selectedImage != null)
+                        Stack(
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              height: 200,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16), // More rounded corners
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    spreadRadius: 1,
+                                    blurRadius: 5,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.file(
+                                  _selectedImage!,
+                                  width: double.infinity,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: GestureDetector(
+                                onTap: _removeImage,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.6),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        spreadRadius: 1,
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      const SizedBox(height: 30),
+                      // Enhanced Post Button with Gradient
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56, // Taller button
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF6A0DAD).withOpacity(0.4),
+                                spreadRadius: 1,
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: _submitPost,
+                            icon: const Icon(Icons.send, size: 22),
+                            label: const Text('Post'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              disabledBackgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              textStyle: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
