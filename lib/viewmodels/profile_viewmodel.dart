@@ -8,12 +8,16 @@ class ProfileViewModel extends ChangeNotifier {
   final ProfileService _profileService = ProfileService();
   UserProfile? _userProfile;
   bool _isLoading = false;
+  bool _isDeletingAccount = false;
+  String? _deleteError;
   Map<String, UserProfile> _profileCache = {}; // Cache profiles by userId
   Map<String, DateTime> _lastFetchTime = {}; // Track when profiles were last fetched
   final Duration _cacheDuration = Duration(minutes: 5); // Cache expiration time
 
   UserProfile? get userProfile => _userProfile;
   bool get isLoading => _isLoading;
+  bool get isDeletingAccount => _isDeletingAccount;
+  String? get deleteError => _deleteError;
 
   // Fix for the profileImageUrl getter
   String? get profileImageUrl => _userProfile?.profileImageUrl;
@@ -158,6 +162,36 @@ class ProfileViewModel extends ChangeNotifier {
       }
 
       notifyListeners();
+    }
+  }
+  // Delete user account and all associated data
+  Future<bool> deleteUserAccount(String userId) async {
+    if (_userProfile == null || _userProfile!.id != userId) {
+      _deleteError = 'User profile not found';
+      notifyListeners();
+      return false;
+    }
+
+    _isDeletingAccount = true;
+    _deleteError = null;
+    notifyListeners();
+
+    try {
+      // Use the ProfileService to handle all deletion steps
+      await _profileService.completeAccountDeletion(userId);
+
+      // Clear cache for this user
+      invalidateCache(userId);
+
+      _isDeletingAccount = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('Error deleting user account: $e');
+      _deleteError = e.toString();
+      _isDeletingAccount = false;
+      notifyListeners();
+      return false;
     }
   }
 }
