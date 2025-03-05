@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/login_provider.dart';
+import '../../utils/anonymized_user_helper.dart';  // Import the helper
 
 class PostWidget extends StatefulWidget {
   final Post post;
@@ -47,7 +48,10 @@ class _PostWidgetState extends State<PostWidget> {
     post = widget.post;
     user = widget.userProfile;
 
-    if (user == null) {
+    // Skip loading user profile if this is an anonymized user
+    if (AnonymizedUserHelper.isAnonymizedUser(post.userId)) {
+      isUserLoading = false;
+    } else if (user == null) {
       _loadUserProfile();
     } else {
       isUserLoading = false;
@@ -64,7 +68,10 @@ class _PostWidgetState extends State<PostWidget> {
       post = widget.post;
       user = widget.userProfile;
 
-      if (user == null) {
+      // Skip loading user profile if this is an anonymized user
+      if (AnonymizedUserHelper.isAnonymizedUser(post.userId)) {
+        isUserLoading = false;
+      } else if (user == null) {
         _loadUserProfile();
       } else {
         isUserLoading = false;
@@ -193,7 +200,7 @@ class _PostWidgetState extends State<PostWidget> {
     }
   }
 
-  void _navigateToCommentsScreen(BuildContext context, String postId, {bool showFullPost = false}) {
+  void _navigateToCommentsScreen(BuildContext context, String postId, {bool showFullPost = true}) {
     if (widget.isCommentsScreenOpen.value) return;
 
     // Set value to true before navigation
@@ -235,6 +242,12 @@ class _PostWidgetState extends State<PostWidget> {
       isTextOverflowing = textPainter.didExceedMaxLines;
     }
 
+    // Check if the user is anonymized
+    final bool isAnonymized = AnonymizedUserHelper.isAnonymizedUser(post.userId);
+    final String displayName = isAnonymized
+        ? AnonymizedUserHelper.displayName
+        : (user?.name ?? 'Loading...');
+
     return Container(
       color: Colors.white,
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -243,7 +256,9 @@ class _PostWidgetState extends State<PostWidget> {
         children: [
           ListTile(
             leading: GestureDetector(
-              onTap: () {
+              onTap: isAnonymized
+                  ? null  // Disable navigation for anonymized users
+                  : () {
                 if (currentUserId != null) {
                   Navigator.push(
                     context,
@@ -265,6 +280,12 @@ class _PostWidgetState extends State<PostWidget> {
                   strokeWidth: 2,
                 ),
               )
+                  : isAnonymized
+                  ? AnonymizedUserHelper.getUserAvatar(
+                userId: post.userId,
+                profileImageUrl: null,
+                radius: 28,
+              )
                   : CircleAvatar(
                 radius: 28,
                 backgroundColor: const Color(0xFFBA8FDB),
@@ -280,7 +301,9 @@ class _PostWidgetState extends State<PostWidget> {
               ),
             ),
             title: GestureDetector(
-              onTap: () {
+              onTap: isAnonymized
+                  ? null  // Disable navigation for anonymized users
+                  : () {
                 if (currentUserId != null) {
                   Navigator.push(
                     context,
@@ -294,7 +317,7 @@ class _PostWidgetState extends State<PostWidget> {
                 }
               },
               child: Text(
-                user?.name ?? 'No Name',
+                displayName,
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -329,68 +352,76 @@ class _PostWidgetState extends State<PostWidget> {
             )
                 : null,
           ),
-          if (post.content.isNotEmpty)
-            GestureDetector(
-              onTap: isTextOverflowing
-                  ? () => _navigateToCommentsScreen(context, post.id, showFullPost: true)
-                  : null,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      post.content,
-                      style: const TextStyle(fontSize: 16, color: Color(0xFF333333)),
-                      maxLines: widget.truncateText ? widget.maxLines : null,
-                      overflow: widget.truncateText ? TextOverflow.ellipsis : TextOverflow.visible,
+
+          // Post content and image - always tappable
+          // Wrapped in a GestureDetector to make entire area tappable
+          GestureDetector(
+            onTap: () => _navigateToCommentsScreen(context, post.id, showFullPost: true),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Post text content
+                if (post.content.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          post.content,
+                          style: const TextStyle(fontSize: 16, color: Color(0xFF333333)),
+                          maxLines: widget.truncateText ? widget.maxLines : null,
+                          overflow: widget.truncateText ? TextOverflow.ellipsis : TextOverflow.visible,
+                        ),
+                        if (isTextOverflowing)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 4.0, bottom: 8.0),
+                            child: Text(
+                              'Read more',
+                              style: TextStyle(
+                                color: Color(0xFF6A0DAD),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                    if (isTextOverflowing)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 4.0, bottom: 8.0),
-                        child: Text(
-                          'Read more',
-                          style: TextStyle(
-                            color: Color(0xFF6A0DAD),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                  ),
+
+                // Post image content
+                if (post.imageUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: CachedNetworkImage(
+                        imageUrl: post.imageUrl!,
+                        placeholder: (context, url) => Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          if (post.imageUrl != null)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: GestureDetector(
-                onTap: () => _navigateToCommentsScreen(context, post.id),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: CachedNetworkImage(
-                    imageUrl: post.imageUrl!,
-                    placeholder: (context, url) => Container(
-                      height: 200,
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
+                        errorWidget: (context, url, error) => Container(
+                          height: 200,
+                          color: Colors.grey[200],
+                          child: const Center(child: Icon(Icons.broken_image)),
                         ),
+                        fit: BoxFit.cover,
                       ),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 200,
-                      color: Colors.grey[200],
-                      child: const Center(child: Icon(Icons.broken_image)),
-                    ),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            )
-          else
-            const SizedBox(height: 8),
+                  )
+                else
+                  const SizedBox(height: 8),
+              ],
+            ),
+          ),
+
+          // Like and comment buttons
           Padding(
             padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
             child: Row(
@@ -448,7 +479,7 @@ class _PostWidgetState extends State<PostWidget> {
                       child: InkWell(
                         onTap: isDisabled
                             ? null
-                            : () => _navigateToCommentsScreen(context, post.id),
+                            : () => _navigateToCommentsScreen(context, post.id, showFullPost: true),
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
