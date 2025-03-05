@@ -23,6 +23,16 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
   bool _showInfoOverlay = false;
 
   @override
+  void initState() {
+    super.initState();
+    _cleanupDeletedUserImages();
+  }
+
+  Future<void> _cleanupDeletedUserImages() async {
+    await _aiGalleryService.cleanupDeletedUserImages();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final loginProvider = Provider.of<LoginProvider>(context, listen: false);
     final userId = loginProvider.userId;
@@ -488,18 +498,27 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
     }
   }
 
+// Replace your _deleteImage method with this fixed version
   Future<void> _deleteImage(BuildContext context, String docId) async {
+    // Get a reference to the ScaffoldMessengerState before any navigation happens
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     try {
       await _aiGalleryService.deleteAiImage(docId);
-      Navigator.pop(context); // Close the bottom sheet
-      ScaffoldMessenger.of(context).showSnackBar(
+
+      // First close the bottom sheet
+      Navigator.pop(context);
+
+      // Then show the snackbar using the saved reference
+      scaffoldMessenger.showSnackBar(
         const SnackBar(
           content: Text('Image deleted successfully'),
           backgroundColor: Color(0xFF6A0DAD),
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      // Show error snackbar using the saved reference
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text('Error deleting image: $e'),
           backgroundColor: Colors.red,

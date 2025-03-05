@@ -30,15 +30,37 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 
   Future<void> _logout(BuildContext context) async {
-    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
-    // Perform logout
-    await loginProvider.logout();
-    // Navigate to Onboarding Screen and clear navigation stack
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      '/onboarding',
-          (Route<dynamic> route) => false,
-    );
+    try {
+      // Store context in a local variable to ensure it's captured properly
+      final BuildContext capturedContext = context;
+
+      // Get login provider
+      final loginProvider = Provider.of<LoginProvider>(capturedContext, listen: false);
+
+      // Perform logout
+      await loginProvider.logout();
+
+      // Check if the widget is still mounted before navigating
+      if (!mounted) return;
+
+      // Navigate to Onboarding Screen and clear navigation stack
+      // Use the captured context to ensure it's still valid
+      Navigator.of(capturedContext).pushNamedAndRemoveUntil(
+        '/onboarding',
+            (Route<dynamic> route) => false,
+      );
+    } catch (e) {
+      print('Error during logout: $e');
+      // If we're still mounted, show an error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error during logout: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -129,12 +151,26 @@ class _AppDrawerState extends State<AppDrawer> {
               },
             ),
             const Divider(), // Divider between menu items
+            // Privacy Policy - Added here between Profile and Logout
+            ListTile(
+              leading: const Icon(Icons.privacy_tip),
+              title: const Text('Privacy Policy'),
+              onTap: () {
+                Navigator.pop(context); // Close drawer
+                Navigator.pushNamed(context, '/privacy_policy');
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Log Out'),
-              onTap: () async {
-                Navigator.pop(context); // Close drawer
-                await _logout(context);
+              onTap: () {
+                try {
+                  Navigator.pop(context); // Close drawer
+                  _logout(context);
+                } catch (e) {
+                  print('Error during logout: $e');
+                  // Just ignore any errors here
+                }
               },
             ),
           ],

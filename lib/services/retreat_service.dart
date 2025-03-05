@@ -42,6 +42,139 @@ class RetreatService {
   }
 
   // =======================
+  // Archive and Cleanup methods
+  // =======================
+
+  /// Archive a retreat and clean up sensitive data
+  Future<void> archiveRetreat(String retreatId) async {
+    // 1. Update the retreat to mark it as archived
+    await _db.collection('retreats').doc(retreatId).update({
+      'isArchived': true,
+      'archivedAt': FieldValue.serverTimestamp(),
+    });
+
+    // 2. Clean up sensitive data
+    await cleanupSensitiveRetreatData(retreatId);
+  }
+
+  /// Check for retreats that ended over 90 days ago and archive them
+  Future<void> checkAndArchiveOldRetreats() async {
+    final ninetyDaysAgo = DateTime.now().subtract(const Duration(days: 90));
+
+    final oldRetreatsQuery = await _db
+        .collection('retreats')
+        .where('endDate', isLessThan: Timestamp.fromDate(ninetyDaysAgo))
+        .where('isArchived', isEqualTo: false)
+        .get();
+
+    for (final retreatDoc in oldRetreatsQuery.docs) {
+      await archiveRetreat(retreatDoc.id);
+    }
+  }
+
+  /// Delete sensitive subcollections for a specific retreat
+  /// Only deletes travel details and psychedelic orders
+  /// Preserves MEQ submissions and feedback for research purposes
+  Future<void> cleanupSensitiveRetreatData(String retreatId) async {
+    try {
+      // List of sensitive subcollections to delete
+      final sensitiveCollections = [
+        'travelDetails',
+        'psychedelicOrders',
+      ];
+
+      // Clean up each sensitive collection
+      for (final collection in sensitiveCollections) {
+        final querySnapshot = await _db
+            .collection('retreats')
+            .doc(retreatId)
+            .collection(collection)
+            .get();
+
+        if (querySnapshot.docs.isEmpty) continue;
+
+        // Use a batch write for efficient deletion
+        final batch = _db.batch();
+        for (final doc in querySnapshot.docs) {
+          batch.delete(doc.reference);
+        }
+
+        await batch.commit();
+      }
+
+      // Update the retreat document to record the cleanup
+      await _db.collection('retreats').doc(retreatId).update({
+        'sensitiveDataCleanedAt': FieldValue.serverTimestamp(),
+      });
+
+    } catch (e) {
+      // Log error but don't rethrow to prevent breaking other processes
+      print('Error cleaning up sensitive retreat data: $e');
+    }
+  }
+
+  /// Legacy method kept for backward compatibility
+  /// Now calls the more specific cleanupSensitiveRetreatData method
+  Future<void> _cleanupTravelDetails(String retreatId) async {
+    await cleanupSensitiveRetreatData(retreatId);
+  }
+
+  // =======================
+  // User Account Deletion
+  // =======================
+
+  /// Delete all data associated with a user
+  Future<void> deleteUserData(String userId) async {
+    try {
+      // 1. Get all retreats
+      final retreatsQuery = await _db.collection('retreats').get();
+
+      // 2. For each retreat, delete user data from all subcollections
+      for (final retreatDoc in retreatsQuery.docs) {
+        final retreatId = retreatDoc.id;
+
+        // List all collections that might contain user data
+        final userCollections = [
+          'travelDetails',
+          'psychedelicOrders',
+          'participants',
+          'meqSubmissions',
+          'feedback'
+        ];
+
+        // Delete user documents from each collection
+        for (final collection in userCollections) {
+          final docRef = _db
+              .collection('retreats')
+              .doc(retreatId)
+              .collection(collection)
+              .doc(userId);
+
+          final docSnapshot = await docRef.get();
+          if (docSnapshot.exists) {
+            await docRef.delete();
+          }
+        }
+
+        // Delete user photos from storage
+        try {
+          final photoRef = _storage.ref().child('retreats/$retreatId/participants/$userId');
+          await photoRef.delete();
+        } catch (e) {
+          // Photo might not exist, continue
+        }
+      }
+
+      // 3. Delete user profile document
+      await _db.collection('users').doc(userId).delete();
+
+    } catch (e) {
+      print('Error deleting user data: $e');
+      rethrow;
+    }
+  }
+
+  // =======================
   // Participant methods
   // =======================
 
@@ -157,6 +290,23 @@ class RetreatService {
         .doc(details.userId);
 
     await docRef.set(details.toMap(), SetOptions(merge: true));
+  }
+
+  /// Get travel details for a specific user in a retreat
+  Future<TravelDetails?> getTravelDetails(String retreatId, String userId) async {
+    final docSnap = await _db
+        .collection('retreats')
+        .doc(retreatId)
+        .collection('travelDetails')
+        .doc(userId)
+        .get();
+
+    if (!docSnap.exists) return null;
+
+    final data = docSnap.data();
+    if (data == null) return null;
+
+    return TravelDetails.fromMap(data);
   }
 
   // =======================

@@ -170,13 +170,25 @@ class TimelineService {
 
   Future<void> deleteComment(String postId, String commentId) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('posts')
-          .doc(postId)
-          .collection('comments')
-          .doc(commentId)
-          .delete();
+      // Start a transaction to ensure both operations complete together
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        // Delete the comment
+        DocumentReference commentRef = _firestore
+            .collection('posts')
+            .doc(postId)
+            .collection('comments')
+            .doc(commentId);
+
+        transaction.delete(commentRef);
+
+        // Update the post's comment count
+        DocumentReference postRef = _firestore.collection('posts').doc(postId);
+        transaction.update(postRef, {
+          'commentsCount': FieldValue.increment(-1)
+        });
+      });
     } catch (e) {
+      print('Error deleting comment: $e');
       throw Exception('Error deleting comment: $e');
     }
   }

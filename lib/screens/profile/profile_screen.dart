@@ -50,6 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFEFF3F7),
       appBar: AppBar(
+        centerTitle: true, // Added this line to center the title
         title: const Text(
           'Profile',
           style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w600),

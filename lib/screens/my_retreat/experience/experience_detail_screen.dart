@@ -268,7 +268,7 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
         const SizedBox(height: 16),
         _buildWideImageButton(
           assetPath: 'assets/images/myretreat/about_me.png',
-          label: 'Complete About Me',
+          label: 'Complete Profile',
           onPressed: () {
             Navigator.push(
               context,
@@ -422,7 +422,7 @@ class _ExperienceDetailScreenState extends State<ExperienceDetailScreen> {
         const SizedBox(height: 8),
         _buildWideImageButton(
           assetPath: 'assets/images/myretreat/travel.png',
-          label: 'Submit Travel',
+          label: 'Submit Travel Details',
           onPressed: () {
             Navigator.push(
               context,

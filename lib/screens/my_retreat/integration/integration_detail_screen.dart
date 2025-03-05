@@ -121,7 +121,10 @@ class _IntegrationDayDetailScreenState extends State<IntegrationDayDetailScreen>
       expandedHeight: 200.0,
       floating: false,
       pinned: true,
+      backgroundColor: _primaryColor, // Use the primary green color
+      centerTitle: true, // Center the title
       flexibleSpace: FlexibleSpaceBar(
+        centerTitle: true, // Center the title in the FlexibleSpaceBar too
         title: Text(
           "Day ${dayDetail.dayNumber}",
           style: const TextStyle(
@@ -135,6 +138,7 @@ class _IntegrationDayDetailScreenState extends State<IntegrationDayDetailScreen>
               ),
             ],
           ),
+          textAlign: TextAlign.center, // Ensure text is centered
         ),
         background: Stack(
           fit: StackFit.expand,
@@ -149,8 +153,8 @@ class _IntegrationDayDetailScreenState extends State<IntegrationDayDetailScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    _primaryColor.withOpacity(0.0),
-                    _secondaryColor.withOpacity(0.2),
+                    _primaryColor.withOpacity(0.1), // More visible gradient
+                    _secondaryColor.withOpacity(0.5), // More visible gradient
                   ],
                 ),
               ),

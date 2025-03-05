@@ -15,7 +15,7 @@ class DayModuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = Color(0xFF2E7D32); // Dark green instead of pink
+    final accentColor = Color(0xFF2E7D32);
 
     IconData iconData;
     Color iconColor = Colors.white;
@@ -27,7 +27,7 @@ class DayModuleCard extends StatelessWidget {
       iconData = Icons.check_circle_outline;
       iconColor = Colors.white;
     } else {
-      iconData = Icons.self_improvement; // Changed to mindfulness icon
+      iconData = Icons.self_improvement;
       iconColor = Colors.white;
     }
 

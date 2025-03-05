@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../utils/validators.dart';
+import '../../services/retreat_service.dart';
+import '../../services/login_provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
   @override
@@ -12,12 +14,15 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _passwordController = TextEditingController();
   late TextEditingController _nameController;
   late TextEditingController _locationController;
   String? _selectedGender;
   DateTime? _selectedDate;
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+  bool _isDeleting = false;
+  bool _needsReauthentication = false;
 
   // Firebase URL for the default avatar
   final String defaultAvatarUrl = 'https://firebasestorage.googleapis.com/v0/b/numinousway.firebasestorage.app/o/profile_images%2Fdefault_avatar.png?alt=media&token=d6afd74a-433c-4713-b8fc-73ffaa18d49c';
@@ -32,6 +37,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (profileViewModel.userProfile?.age != null) {
       _selectedDate = DateTime.tryParse(profileViewModel.userProfile!.age!);
     }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _locationController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -99,6 +112,271 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+// Show reauthentication dialog with better error handling
+  Future<bool> _showReauthenticationDialog() async {
+    _passwordController.clear();
+    bool isAuthenticating = false;
+    String? errorMessage;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: Text(
+                  'Confirm Your Password',
+                  style: TextStyle(
+                    color: Colors.red[700],
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'For your security, please confirm your password before deleting your account.',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      SizedBox(height: 16),
+                      TextField(
+                        controller: _passwordController,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          errorText: errorMessage,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFF6A0DAD)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        obscureText: true,
+                      ),
+                    ],
+                  ),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.grey[700]),
+                    ),
+                    onPressed: isAuthenticating
+                        ? null
+                        : () {
+                      Navigator.of(dialogContext).pop(false);
+                    },
+                  ),
+                  TextButton(
+                    child: isAuthenticating
+                        ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.red[700]!),
+                      ),
+                    )
+                        : Text(
+                      'Confirm',
+                      style: TextStyle(color: Colors.red[700]),
+                    ),
+                    onPressed: isAuthenticating
+                        ? null
+                        : () async {
+                      setState(() {
+                        isAuthenticating = true;
+                        errorMessage = null;
+                      });
+
+                      final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+                      final success = await loginProvider.reauthenticateUser(_passwordController.text);
+
+                      if (success) {
+                        Navigator.of(dialogContext).pop(true);
+                      } else {
+                        setState(() {
+                          isAuthenticating = false;
+                          errorMessage = loginProvider.errorMessage ?? 'Incorrect password. Please try again.';
+                        });
+                      }
+                    },
+                  ),
+                ],
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              );
+            }
+        );
+      },
+    );
+
+    return result ?? false;
+  }
+
+// Show delete account confirmation dialog
+  Future<void> _showDeleteAccountDialog() async {
+    // First, make sure the user is authenticated recently before proceeding
+    final reauthed = await _showReauthenticationDialog();
+    if (!reauthed) return; // Exit if authentication failed or was cancelled
+
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'Delete Account',
+            style: TextStyle(
+              color: Colors.red[700],
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text(
+                  'Are you sure you want to delete your account?',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'This action cannot be undone. All your personal data, travel details, retreat information, and photos will be permanently deleted.',
+                ),
+                SizedBox(height: 12),
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red[200]!),
+                  ),
+                  child: Text(
+                    'For your security, you will be signed out immediately after your account is deleted.',
+                    style: TextStyle(
+                      color: Colors.red[800],
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: _isDeleting
+                  ? SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                ),
+              )
+                  : Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+              onPressed: _isDeleting
+                  ? null
+                  : () async {
+                await _deleteAccount();
+              },
+            ),
+          ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        );
+      },
+    );
+  }
+
+// Handle account deletion - now happens after successful reauthentication
+  Future<void> _deleteAccount() async {
+    setState(() {
+      _isDeleting = true;
+    });
+
+    try {
+      final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+      final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+      final retreatService = RetreatService();
+
+      if (profileViewModel.userProfile?.id != null) {
+        final userId = profileViewModel.userProfile!.id!;
+
+        try {
+          // Delete user data from all retreats
+          await retreatService.deleteUserData(userId);
+
+          // Delete the user account
+          final success = await profileViewModel.deleteUserAccount(userId);
+
+          if (success) {
+            // Close the dialog
+            Navigator.of(context).pop();
+
+            // Navigate to onboarding/login screen and clear navigation stack
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/onboarding',
+                  (Route<dynamic> route) => false,
+            );
+
+            // Show confirmation snackbar
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Your account has been deleted'),
+                backgroundColor: Colors.red[700],
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          } else {
+            // Handle errors
+            throw Exception(profileViewModel.deleteError ?? 'Failed to delete account');
+          }
+        } catch (e) {
+          rethrow;
+        }
+      }
+    } catch (e) {
+      print('Error deleting account: $e');
+
+      // Close the dialog
+      Navigator.of(context).pop();
+
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete account: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isDeleting = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileViewModel = Provider.of<ProfileViewModel>(context);
@@ -106,6 +384,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       backgroundColor: Color(0xFFF5F5F5),
       appBar: AppBar(
+        centerTitle: true, // Added this line to center the title
         title: Text('Edit Profile'),
         flexibleSpace: Container(
           decoration: BoxDecoration(
@@ -119,10 +398,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.white),
       ),
-      body: profileViewModel.isLoading
+      body: profileViewModel.isLoading || profileViewModel.isDeletingAccount
           ? Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
+              ),
+              SizedBox(height: 16),
+              Text(
+                profileViewModel.isDeletingAccount
+                    ? 'Deleting account...'
+                    : 'Loading profile...',
+                style: TextStyle(
+                  color: Color(0xFF6A0DAD),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ))
           : Padding(
         padding: EdgeInsets.all(16),
@@ -130,7 +424,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           key: _formKey,
           child: ListView(
             children: [
-// Replace the Stack widget in your build method with this updated version
+              // Profile image section
               Center(
                 child: Stack(
                   alignment: Alignment.bottomRight,
@@ -195,6 +489,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               SizedBox(height: 24),
 
+              // Form fields
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
@@ -281,6 +576,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               SizedBox(height: 20),
 
+              // Save button
               ElevatedButton(
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
@@ -335,6 +631,64 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
               ),
+
+              SizedBox(height: 40),
+
+              // Delete account section
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red[200]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Delete Account',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red[800],
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Permanently delete your account and all associated data. This action cannot be undone.',
+                      style: TextStyle(
+                        color: Colors.red[700],
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    TextButton(
+                      onPressed: _showDeleteAccountDialog,
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.red[100],
+                        foregroundColor: Colors.red[800],
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(color: Colors.red[300]!),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.delete_forever, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Delete My Account',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              SizedBox(height: 24),
             ],
           ),
         ),

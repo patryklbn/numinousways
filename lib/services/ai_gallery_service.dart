@@ -365,6 +365,53 @@ class AiGalleryService {
     }
   }
 
+  /// Delete all images created by a specific user
+  Future<void> deleteAllUserImages(String userId) async {
+    try {
+      // Query all images by this user
+      final querySnapshot = await _firestore
+          .collection('ai_images')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      // Delete each image
+      for (var doc in querySnapshot.docs) {
+        await deleteAiImage(doc.id);
+      }
+
+      print('Deleted ${querySnapshot.docs.length} images for user $userId');
+    } catch (e) {
+      print('Error deleting user images: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> cleanupDeletedUserImages() async {
+    try {
+      // Query for all images
+      final imagesSnapshot = await _firestore.collection('ai_images').get();
+
+      for (var doc in imagesSnapshot.docs) {
+        final data = doc.data();
+        final userId = data['userId'] as String?;
+
+        // Check if the user still exists
+        if (userId != null) {
+          final userDoc = await _firestore.collection('users').doc(userId).get();
+
+          // If user doesn't exist, delete the image
+          if (!userDoc.exists) {
+            await deleteAiImage(doc.id);
+          }
+        }
+      }
+
+      print('Cleaned up images from deleted users');
+    } catch (e) {
+      print('Error cleaning up images from deleted users: $e');
+    }
+  }
+
   /// Schedule cleanup task
   Future<void> scheduleCleanupIfNeeded() async {
     // Get the last cleanup time

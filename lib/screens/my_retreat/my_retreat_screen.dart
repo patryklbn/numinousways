@@ -52,9 +52,11 @@ class _GalleryViewerState extends State<GalleryViewer> {
       appBar: AppBar(
         backgroundColor: Colors.black.withOpacity(0.5),
         elevation: 0,
+        centerTitle: true,
         title: Text(
           '${widget.title} (${_currentIndex + 1}/${widget.images.length})',
           style: const TextStyle(fontSize: 16),
+          textAlign: TextAlign.center,
         ),
       ),
       body: PageView.builder(
@@ -166,8 +168,13 @@ class MyRetreatScreen extends StatelessWidget {
       floating: false,
       pinned: true,
       elevation: 0,
+      centerTitle: true, // Ensures the title is centered on Android as well
       backgroundColor: const Color(0xFFB4347F),
       flexibleSpace: FlexibleSpaceBar(
+        // This ensures the text is centered consistently across platforms
+        centerTitle: true,
+        // You can adjust titlePadding if you want precise centering when collapsed:
+        // titlePadding: const EdgeInsets.only(bottom: 16.0),
         title: const Text(
           'My Retreat',
           style: TextStyle(
@@ -181,6 +188,7 @@ class MyRetreatScreen extends StatelessWidget {
               ),
             ],
           ),
+          textAlign: TextAlign.center,
         ),
         background: Stack(
           fit: StackFit.expand,
@@ -225,7 +233,7 @@ class MyRetreatScreen extends StatelessWidget {
         ],
       ),
       child: const Text(
-        'At Numinous Way, our retreats seamlessly guide you through essential preparation, immersive experiences, and mindful integration. With curated tasks, transformative exercises, and supportive environments, we create a nurturing space for profound personal growth and self-discovery.',
+        'At Numinous Ways, our retreats seamlessly guide you through essential preparation, immersive experiences, and mindful integration. With curated tasks, transformative exercises, and supportive environments, we create a nurturing space for profound personal growth and self-discovery.',
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -557,7 +565,8 @@ class MyRetreatScreen extends StatelessWidget {
                                 PageRouteBuilder(
                                   pageBuilder: (context, animation, secondaryAnimation) =>
                                       FacilitatorProfileScreen(facilitator: facilitator),
-                                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                  transitionsBuilder:
+                                      (context, animation, secondaryAnimation, child) {
                                     return FadeTransition(
                                       opacity: animation,
                                       child: child,

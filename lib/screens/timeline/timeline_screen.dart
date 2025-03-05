@@ -40,6 +40,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
     return Scaffold(
       backgroundColor: Colors.white, // Changed to white background for cleaner look with dividers
       appBar: AppBar(
+        centerTitle: true, // Add this line to center the title
         title: const Text(
           "Timeline",
           style: TextStyle(
