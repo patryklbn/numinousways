@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/material.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -12,7 +13,20 @@ class AuthService {
         email: email,
         password: password,
       );
-      return userCredential.user;
+
+      // Get user
+      User? user = userCredential.user;
+
+      // Force reload to get latest verification status
+      if (user != null) {
+        await user.reload();
+        // Get refreshed user
+        user = _auth.currentUser;
+
+        print("User logged in: ${user?.email}, Verified: ${user?.emailVerified}");
+      }
+
+      return user;
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'user-not-found':
@@ -28,6 +42,91 @@ class AuthService {
       }
     } catch (e) {
       throw 'An error occurred. Please try again later. Details: ${e.toString()}';
+    }
+  }
+
+  // Send verification email
+  Future<void> sendVerificationEmail() async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      throw 'No user is currently signed in.';
+    }
+
+    try {
+      // Always reload user before sending verification email
+      await user.reload();
+      user = _auth.currentUser;
+
+      if (user != null) {
+        await user.sendEmailVerification();
+        print("Verification email sent to: ${user.email}");
+      }
+    } catch (e) {
+      print("Error sending verification email: $e");
+      throw 'Error sending verification email: ${e.toString()}';
+    }
+  }
+
+  // Handle expired verification link
+  Future<void> handleExpiredVerificationLink(BuildContext context) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) {
+        // If no user is signed in, show error
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please sign in again to request a new verification email.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      // Reload user to get latest state
+      await user.reload();
+      user = _auth.currentUser;
+
+      if (user != null && !user.emailVerified) {
+        // Send a new verification email
+        await user.sendEmailVerification();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('A new verification email has been sent. Please check your inbox.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      } else if (user != null && user.emailVerified) {
+        // User is already verified
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Your email is already verified! You can continue using the app.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // Check if email is verified (with reload)
+  Future<bool> isEmailVerified() async {
+    User? user = _auth.currentUser;
+    if (user == null) return false;
+
+    try {
+      await user.reload();
+      user = _auth.currentUser; // Get refreshed user
+      return user?.emailVerified ?? false;
+    } catch (e) {
+      print("Error checking email verification: $e");
+      return false;
     }
   }
 
@@ -65,7 +164,12 @@ class AuthService {
       );
 
       UserCredential userCredential = await _auth.signInWithCredential(credential);
-      return userCredential.user;
+
+      // Get the user
+      User? user = userCredential.user;
+      print("Google sign-in: ${user?.email}");
+
+      return user;
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'account-exists-with-different-credential':
