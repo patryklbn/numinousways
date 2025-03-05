@@ -3,7 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/dialog_helper.dart';
 import '../../utils/validators.dart';
-
+import 'package:provider/provider.dart'; // Add this import for Provider
+import '../../services/login_provider.dart'; // Import your LoginProvider
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -13,7 +14,6 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -21,7 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  // Register function that shows a success dialog instead of switching to success UI
+  // Register function that sends email verification
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -29,18 +29,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _isLoading = true;
     });
 
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+
     try {
-      // Create user account
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+      // Create user account using the provider
+      bool registrationSuccess = await loginProvider.signUpWithEmailAndPassword(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
       );
 
+      if (!registrationSuccess) {
+        setState(() {
+          _isLoading = false;
+        });
+        // Show error message from provider
+        if (loginProvider.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(loginProvider.errorMessage!),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+
       // Save the user's name and other profile info to Firestore
-      await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+      await FirebaseFirestore.instance.collection('users').doc(loginProvider.userId).set({
         'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
+        'emailVerified': false,
       });
 
       if (mounted) {
@@ -48,15 +68,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _isLoading = false;
         });
 
-        // Show a success dialog upon registration
+        // Show a success dialog with verification instructions
         await DialogHelper.showSuccessDialog(
           context,
-          "Welcome ${_nameController.text}!\n\nRegistration successful! Your account has been created.",
+          "Welcome ${_nameController.text}!\n\nRegistration successful! Please check your email to verify your account before logging in.",
         );
 
-        // Navigate to onboarding after the user dismisses the dialog
+        // Sign out the user - they need to verify email before logging in
+        await loginProvider.logout();
+
+        // Navigate back to login screen after the user dismisses the dialog
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/timeline');
+          Navigator.pop(context);
         }
       }
     } catch (e) {
@@ -66,7 +89,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
           _isLoading = false;
         });
 
-        // Show error directly in a SnackBar instead of a dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${e.toString()}'),
@@ -76,11 +98,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     }
-  }
-
-  // Navigate to onboarding (called after dialog is dismissed, in this example)
-  void _continueToOnboarding() {
-    Navigator.pushReplacementNamed(context, '/onboarding');
   }
 
   @override
