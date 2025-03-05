@@ -70,77 +70,88 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
 
     final aiGalleryService = AiGalleryService();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF1A1A2E),
-      appBar: AppBar(
-        title: const Text(
-          'AI Image Generator',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1,
-          ),
-        ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: Icon(
-              _showFilters ? Icons.filter_list_off : Icons.filter_list,
+    return GestureDetector(
+      // Dismiss keyboard when tapping outside of text fields
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1A1A2E),
+        appBar: AppBar(
+          centerTitle: true,
+          // Added this line to center the title
+          title: const Text(
+            'AI Image Generator',
+            style: TextStyle(
               color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
             ),
-            onPressed: () {
-              setState(() {
-                _showFilters = !_showFilters;
-              });
-            },
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Either show AI Assistant header or filters
-              if (!_showFilters)
-                _buildAiAssistantHeader()
-              else
-                _buildFiltersSection(),
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Colors.white),
+          actions: [
+            IconButton(
+              icon: Icon(
+                _showFilters ? Icons.filter_list_off : Icons.filter_list,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                setState(() {
+                  _showFilters = !_showFilters;
+                });
+              },
+            ),
+          ],
+        ),
+        body: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Either show AI Assistant header or filters
+                if (!_showFilters)
+                  _buildAiAssistantHeader()
+                else
+                  _buildFiltersSection(),
 
-              const SizedBox(height: 16),
-              _buildPromptInput(),
-              const SizedBox(height: 20),
-
-              // Generate button or loading indicator
-              if (!_hasGeneratedImage) _buildGenerateButton(context, userId, aiGalleryService),
-
-              // Error message if any
-              if (_errorMessage != null && !_hasGeneratedImage) _buildErrorMessage(),
-
-              // Preview image after generation
-              if (_hasGeneratedImage && _generatedImageUrl != null) ...[
-                _buildImagePreview(),
+                const SizedBox(height: 16),
+                _buildPromptInput(),
                 const SizedBox(height: 20),
-                _buildPublishButton(context, userId, userName, aiGalleryService),
-                const SizedBox(height: 20),
-                _buildRegenerateButton(context, userId, aiGalleryService),
+
+                // Generate button or loading indicator
+                if (!_hasGeneratedImage) _buildGenerateButton(
+                    context, userId, aiGalleryService),
+
+                // Error message if any
+                if (_errorMessage != null &&
+                    !_hasGeneratedImage) _buildErrorMessage(),
+
+                // Preview image after generation
+                if (_hasGeneratedImage && _generatedImageUrl != null) ...[
+                  _buildImagePreview(),
+                  const SizedBox(height: 20),
+                  _buildPublishButton(
+                      context, userId, userName, aiGalleryService),
+                  const SizedBox(height: 20),
+                  _buildRegenerateButton(context, userId, aiGalleryService),
+                ],
+
+                const SizedBox(height: 24),
+                _buildTipsSection(),
               ],
-
-              const SizedBox(height: 24),
-              _buildTipsSection(),
-            ],
+            ),
           ),
         ),
       ),
@@ -150,7 +161,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
   // Fetch the actual user's name from Firestore
   Future<String?> _fetchUserName(String userId) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final doc = await FirebaseFirestore.instance.collection('users').doc(
+          userId).get();
       if (doc.exists) {
         final data = doc.data();
         if (data != null && data['name'] != null) {
@@ -277,7 +289,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
           color: const Color(0xFF2A2A3E),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? color : const Color(0xFF6A0DAD).withOpacity(0.3),
+            color: isSelected ? color : const Color(0xFF6A0DAD).withOpacity(
+                0.3),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
@@ -373,7 +386,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: const Color(0xFF6A0DAD).withOpacity(0.5)),
+              borderSide: BorderSide(
+                  color: const Color(0xFF6A0DAD).withOpacity(0.5)),
             ),
           ),
         ),
@@ -424,7 +438,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
                             ? loadingProgress.cumulativeBytesLoaded /
                             loadingProgress.expectedTotalBytes!
                             : null,
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
+                        valueColor: const AlwaysStoppedAnimation<Color>(Color(
+                            0xFF6A0DAD)),
                       ),
                     );
                   },
@@ -445,7 +460,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
                           const SizedBox(height: 16),
                           Text(
                             'Failed to load image preview',
-                            style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.7)),
                           ),
                         ],
                       ),
@@ -459,7 +475,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
                 top: 12,
                 right: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.6),
                     borderRadius: BorderRadius.circular(16),
@@ -511,7 +528,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     );
   }
 
-  Widget _buildGenerateButton(BuildContext context, String? userId, AiGalleryService aiGalleryService) {
+  Widget _buildGenerateButton(BuildContext context, String? userId,
+      AiGalleryService aiGalleryService) {
     return SizedBox(
       width: double.infinity,
       child: _isGenerating
@@ -580,11 +598,13 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     );
   }
 
-  Widget _buildPublishButton(BuildContext context, String? userId, String userName, AiGalleryService aiGalleryService) {
+  Widget _buildPublishButton(BuildContext context, String? userId,
+      String userName, AiGalleryService aiGalleryService) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () => _publishToGallery(context, userId, userName, aiGalleryService),
+        onPressed: () =>
+            _publishToGallery(context, userId, userName, aiGalleryService),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
           shape: RoundedRectangleBorder(
@@ -626,7 +646,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     );
   }
 
-  Widget _buildRegenerateButton(BuildContext context, String? userId, AiGalleryService aiGalleryService) {
+  Widget _buildRegenerateButton(BuildContext context, String? userId,
+      AiGalleryService aiGalleryService) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton(
@@ -678,7 +699,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildTipItem('Be specific about style (e.g., "watercolor", "realistic", "3D render")'),
+          _buildTipItem(
+              'Be specific about style (e.g., "watercolor", "realistic", "3D render")'),
           _buildTipItem('Include details about lighting and atmosphere'),
           _buildTipItem('Mention color schemes you prefer'),
           _buildTipItem('Specify the perspective or viewpoint'),
@@ -745,11 +767,72 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     }
   }
 
+  // Find which moderation words are in the text
+  List<String> _findInappropriateContent(String text) {
+    final lowerCaseText = text.toLowerCase();
+    return _moderationWords.where((word) => lowerCaseText.contains(word))
+        .toList();
+  }
+
   // Basic content moderation check
   bool _containsInappropriateContent(String text) {
-    final lowerCaseText = text.toLowerCase();
-    return _moderationWords.any((word) => lowerCaseText.contains(word));
+    return _findInappropriateContent(text).isNotEmpty;
   }
+
+  // Show dialog for inappropriate content
+// Show dialog for inappropriate content
+  Future<void> _showModerationDialog(BuildContext context,
+      List<String> flaggedWords) async {
+    // Format the words with quotes and commas
+    final formattedWords = flaggedWords.map((word) => '"$word"').join(', ');
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) =>
+          AlertDialog(
+            title: Row(
+              children: const [
+                Icon(Icons.error_outline, color: Colors.red, size: 28),
+                SizedBox(width: 10),
+                Text('Content Not Allowed'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your prompt contains inappropriate words that are not allowed: $formattedWords',
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Please edit your prompt to remove these words and try again.',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'Understand',
+                  style: TextStyle(color: Color(0xFF6A0DAD),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+    );
+
+    // No need to return anything since there's only one option now
+  }
+
 
   // Get the filter prompt addition - updated for post-psychedelic retreat context
   String _getFilterPrompt(String filter) {
@@ -767,7 +850,11 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     }
   }
 
-  Future<void> _generateImage(BuildContext context, String? userId, AiGalleryService aiGalleryService) async {
+  Future<void> _generateImage(BuildContext context, String? userId,
+      AiGalleryService aiGalleryService) async {
+    // Dismiss keyboard first
+    FocusScope.of(context).unfocus();
+
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please log in first.')),
@@ -783,11 +870,12 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
       return;
     }
 
-    // Check for inappropriate content
-    if (_containsInappropriateContent(prompt)) {
-      setState(() {
-        _errorMessage = 'Your prompt may contain inappropriate content. Please revise and try again.';
-      });
+    // Check for inappropriate content and show dialog
+    final flaggedWords = _findInappropriateContent(prompt);
+    if (flaggedWords.isNotEmpty) {
+      // Show the dialog - this will always force the user to edit their prompt
+      await _showModerationDialog(context, flaggedWords);
+      // Return early, not proceeding with generation
       return;
     }
 
@@ -823,7 +911,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
         _imageUrls = imageUrls;
         _hasGeneratedImage = true;
         _isGenerating = false;
-        _appliedFilter = currentFilter; // Store which filter was actually applied
+        _appliedFilter =
+            currentFilter; // Store which filter was actually applied
       });
     } catch (e) {
       log('Error generating image: $e');
@@ -834,10 +923,15 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     }
   }
 
-  Future<void> _publishToGallery(BuildContext context, String? userId, String userName, AiGalleryService aiGalleryService) async {
+  Future<void> _publishToGallery(BuildContext context, String? userId,
+      String userName, AiGalleryService aiGalleryService) async {
+    // Dismiss keyboard first
+    FocusScope.of(context).unfocus();
+
     if (userId == null || _generatedImageUrl == null || _imageUrls == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in and generate an image first.')),
+        const SnackBar(
+            content: Text('Please log in and generate an image first.')),
       );
       return;
     }
