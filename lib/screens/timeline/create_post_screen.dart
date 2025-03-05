@@ -227,11 +227,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
+          centerTitle: true, // Added this line to center the title
           title: const Text(
             "Create Post",
             style: TextStyle(
               color: Colors.white,
-              fontSize: 24,
+              fontSize: 22, // Adjusted to match Timeline
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -327,11 +328,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                                     controller: _contentController,
                                     maxLines: 8,
                                     maxLength: _maxCharacters,
+                                    textAlignVertical: TextAlignVertical.center, // Add this to center text vertically
                                     style: const TextStyle(
                                       fontSize: 16, // Slightly larger font
+                                      height: 1.5, // Improve text positioning
                                     ),
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       hintText: 'What\'s on your mind?',
+                                      hintStyle: TextStyle(color: Colors.grey.shade500),
+                                      isDense: true, // Make input more compact
+                                      // Updated content padding for consistent centering on Android
+                                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                                       border: InputBorder.none,
                                       alignLabelWithHint: true,
                                       counterText: "",
@@ -492,7 +499,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                           ),
                           child: ElevatedButton.icon(
                             onPressed: _submitPost,
-                            icon: const Icon(Icons.send, size: 22),
+                            icon: const Icon(Icons.send, size: 22, color: Colors.white),
                             label: const Text('Post'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.transparent,

@@ -7,7 +7,7 @@ import '/models/day_detail.dart';
 import '/models/daymodule.dart';
 import '/models/article.dart';
 import '/screens/my_retreat/audio_player_screen.dart';
-import 'package:numinous_way/viewmodels/day_detail_provider.dart';
+import 'package:numinous_ways/viewmodels/day_detail_provider.dart';
 // ^ or wherever you placed the new provider
 
 class DayDetailScreen extends StatefulWidget {
@@ -143,7 +143,9 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
       floating: false,
       pinned: true,
       backgroundColor: accentColor,
+      centerTitle: true, // Added centerTitle
       flexibleSpace: FlexibleSpaceBar(
+        centerTitle: true, // Added centerTitle here too for better cross-platform support
         title: Text(
           "Day ${dayDetail.dayNumber}",
           style: const TextStyle(
@@ -157,6 +159,7 @@ class _DayDetailScreenState extends State<DayDetailScreen> {
               ),
             ],
           ),
+          textAlign: TextAlign.center, // Added for better centering
         ),
         background: Stack(
           fit: StackFit.expand,

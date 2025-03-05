@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:numinous_way/screens/my_retreat/experience/experience_detail_screen.dart';
+import 'package:numinous_ways/screens/my_retreat/experience/experience_detail_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -27,12 +27,15 @@ class ExperienceMainScreen extends StatefulWidget {
   _ExperienceMainScreenState createState() => _ExperienceMainScreenState();
 }
 
-class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
+class _ExperienceMainScreenState extends State<ExperienceMainScreen> with SingleTickerProviderStateMixin {
   late Future<List<Retreat>> _retreatsFuture;
   final RetreatService _retreatService = RetreatService();
   late MyRetreatService _myRetreatService;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
   Retreat? _selectedRetreat;
+  PageController? _galleryPageController;
 
   // For toggling "Show more / Show less" in each retreat's shortDescription
   final Map<String, bool> _expandedRetreats = {};
@@ -44,6 +47,17 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
   @override
   void initState() {
     super.initState();
+    // Setup animation controller
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    _animationController.forward();
+
     // Fetch all active (non-archived) retreats
     _retreatsFuture = _retreatService.fetchActiveRetreats();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -52,99 +66,127 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
   }
 
   @override
+  void dispose() {
+    _animationController.dispose();
+    _galleryPageController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      // Gradient AppBar
-      appBar: AppBar(
-        title: Text(
-          'Experience',
-          style: GoogleFonts.roboto(
-            textStyle: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              shadows: [
-                Shadow(
-                  offset: Offset(0, 1),
-                  blurRadius: 2.0,
-                  color: Colors.black54,
+    return GestureDetector(
+      // Add horizontal swipe detection for going back
+      onHorizontalDragEnd: (details) {
+        // If the swipe is from left to right with sufficient velocity
+        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+          // Check if we can pop this route
+          if (Navigator.of(context).canPop()) {
+            // Pop the route to go back
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        // Gradient AppBar
+        appBar: AppBar(
+          centerTitle: true,
+          title: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Text(
+              'Experience',
+              style: GoogleFonts.roboto(
+                textStyle: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 1),
+                      blurRadius: 2.0,
+                      color: Colors.black54,
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [gradientColor1, gradientColor2],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [gradientColor1, gradientColor2],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
+          iconTheme: const IconThemeData(color: Colors.white),
+          elevation: 4.0,
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        elevation: 4.0,
-      ),
-      body: FutureBuilder<List<Retreat>>(
-        future: _retreatsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(gradientColor2),
-              ),
-            );
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error loading retreats: ${snapshot.error}',
-                style: GoogleFonts.roboto(
-                  textStyle: const TextStyle(
-                    color: gradientColor2,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+        body: FutureBuilder<List<Retreat>>(
+          future: _retreatsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(gradientColor2),
+                ),
+              );
+            }
+            if (snapshot.hasError) {
+              return Center(
+                child: Text(
+                  'Error loading retreats: ${snapshot.error}',
+                  style: GoogleFonts.roboto(
+                    textStyle: const TextStyle(
+                      color: gradientColor2,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                ),
+              );
+            }
+
+            final retreats = snapshot.data ?? [];
+            if (retreats.isEmpty) {
+              return Center(
+                child: Text(
+                  'No retreats available.',
+                  style: GoogleFonts.roboto(
+                    textStyle: const TextStyle(
+                      color: gradientColor2,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            // If none is selected yet, pick the first
+            _selectedRetreat ??= retreats.first;
+
+            // Wrap everything in a scrollable Column
+            return FadeTransition(
+              opacity: _fadeAnimation,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1) Horizontal list of retreat cards
+                    _buildHorizontalRetreatList(retreats),
+                    const SizedBox(height: 24),
+
+                    // 2) Detail section for the currently selected retreat
+                    _buildSelectedRetreatDetails(_selectedRetreat!),
+                  ],
                 ),
               ),
             );
-          }
-
-          final retreats = snapshot.data ?? [];
-          if (retreats.isEmpty) {
-            return Center(
-              child: Text(
-                'No retreats available.',
-                style: GoogleFonts.roboto(
-                  textStyle: const TextStyle(
-                    color: gradientColor2,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            );
-          }
-
-          // If none is selected yet, pick the first
-          _selectedRetreat ??= retreats.first;
-
-          // Wrap everything in a scrollable Column
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 1) Horizontal list of retreat cards
-                _buildHorizontalRetreatList(retreats),
-                const SizedBox(height: 24),
-
-                // 2) Detail section for the currently selected retreat
-                _buildSelectedRetreatDetails(_selectedRetreat!),
-              ],
-            ),
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -191,26 +233,42 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
     final startStr = dateFormat.format(retreat.startDate);
     final endStr = dateFormat.format(retreat.endDate);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Your Journey Begins Here'),
-        const SizedBox(height: 8),
-        _buildShortDescription(retreat),
-        const SizedBox(height: 20),
-        _buildSectionTitle('Venue'),
-        const SizedBox(height: 8),
-        _buildVenueGallery(retreat.venueId),
-        const SizedBox(height: 24),
-        _buildSectionTitle('Facilitators and Assistants'),
-        const SizedBox(height: 8),
-        _buildFacilitatorsSection(retreat.id),
-        const SizedBox(height: 24),
-        // Transportation section now rebranded as "Location"
-        _buildTravelSection(retreat),
-        const SizedBox(height: 24),
-        _buildEnrollmentSection(retreat),
-      ],
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 500),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.0, 0.2),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: Column(
+        key: ValueKey<String>(retreat.id), // Important for animation
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildSectionTitle('Your Journey Begins Here'),
+          const SizedBox(height: 8),
+          _buildShortDescription(retreat),
+          const SizedBox(height: 20),
+          _buildSectionTitle('Venue'),
+          const SizedBox(height: 8),
+          _buildVenueGallery(retreat.venueId),
+          const SizedBox(height: 24),
+          _buildSectionTitle('Facilitators and Assistants'),
+          const SizedBox(height: 8),
+          _buildFacilitatorsSection(retreat.id),
+          const SizedBox(height: 24),
+          // Transportation section now rebranded as "Location"
+          _buildTravelSection(retreat),
+          const SizedBox(height: 24),
+          _buildEnrollmentSection(retreat),
+        ],
+      ),
     );
   }
 
@@ -259,15 +317,29 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          isExpanded ? shortDesc : truncatedText,
-          style: GoogleFonts.roboto(
-            textStyle: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[800],
-              height: 1.6,
+        AnimatedCrossFade(
+          firstChild: Text(
+            truncatedText,
+            style: GoogleFonts.roboto(
+              textStyle: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[800],
+                height: 1.6,
+              ),
             ),
           ),
+          secondChild: Text(
+            shortDesc,
+            style: GoogleFonts.roboto(
+              textStyle: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[800],
+                height: 1.6,
+              ),
+            ),
+          ),
+          crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
         ),
         const SizedBox(height: 6),
         InkWell(
@@ -288,6 +360,85 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Enhanced gallery viewer with swipe gestures
+  void _showGallery(BuildContext context, List<String> images, int initialIndex, String tag) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return GestureDetector(
+            onHorizontalDragEnd: (details) {
+              if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+                Navigator.of(context).pop();
+              }
+            },
+            child: Scaffold(
+              backgroundColor: Colors.black,
+              appBar: AppBar(
+                backgroundColor: Colors.black.withOpacity(0.5),
+                elevation: 0,
+                title: StreamBuilder<int>(
+                  stream: Stream.periodic(Duration.zero, (i) => i).asyncMap((_) async {
+                    await Future.delayed(Duration.zero);
+                    return _galleryPageController?.page?.round() ?? initialIndex;
+                  }),
+                  initialData: initialIndex,
+                  builder: (context, snapshot) {
+                    final currentIndex = snapshot.data ?? initialIndex;
+                    return Text(
+                      'Image ${currentIndex + 1}/${images.length}',
+                      style: const TextStyle(color: Colors.white),
+                    );
+                  },
+                ),
+                iconTheme: const IconThemeData(color: Colors.white),
+              ),
+              body: PageView.builder(
+                controller: _galleryPageController = PageController(initialPage: initialIndex),
+                itemCount: images.length,
+                physics: const BouncingScrollPhysics(),
+                itemBuilder: (ctx, index) {
+                  return Hero(
+                    tag: '$tag-$index',
+                    child: InteractiveViewer(
+                      minScale: 0.5,
+                      maxScale: 4.0,
+                      child: CachedNetworkImage(
+                        imageUrl: images[index],
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        ),
+                        errorWidget: (context, url, error) => const Icon(
+                          Icons.error,
+                          color: Colors.white,
+                          size: 48,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 0.2);
+          const end = Offset.zero;
+          final tween = Tween(begin: begin, end: end);
+          final offsetAnimation = animation.drive(tween);
+
+          return SlideTransition(
+            position: offsetAnimation,
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -380,15 +531,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
               final imageUrl = venue.images[index];
               return GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => FullScreenImageViewer(
-                        imageUrl: imageUrl,
-                        tag: 'venue-$venueId-$index',
-                      ),
-                    ),
-                  );
+                  _showGallery(context, venue.images, index, 'venue-$venueId');
                 },
                 child: Hero(
                   tag: 'venue-$venueId-$index',
@@ -479,13 +622,24 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
         }
         return SizedBox(
           height: 180,
-          child: ListView.separated(
+          child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: facilitators.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
               final facilitator = facilitators[index];
-              return _buildFacilitatorCard(facilitator);
+              return AnimationConfiguration.staggeredList(
+                position: index,
+                duration: const Duration(milliseconds: 500),
+                child: SlideAnimation(
+                  horizontalOffset: 50.0,
+                  child: FadeInAnimation(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 16.0),
+                      child: _buildFacilitatorCard(facilitator),
+                    ),
+                  ),
+                ),
+              );
             },
           ),
         );
@@ -498,8 +652,22 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => FacilitatorProfileScreen(facilitator: facilitator),
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => FacilitatorProfileScreen(facilitator: facilitator),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              const begin = Offset(0.0, 0.2);
+              const end = Offset.zero;
+              final tween = Tween(begin: begin, end: end);
+              final offsetAnimation = animation.drive(tween);
+
+              return SlideTransition(
+                position: offsetAnimation,
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
           ),
         );
       },
@@ -521,10 +689,13 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: CachedNetworkImageProvider(facilitator.photoUrl),
+            Hero(
+              tag: 'facilitator-${facilitator.id}',
+              child: CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: CachedNetworkImageProvider(facilitator.photoUrl),
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -560,7 +731,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
   }
 
   // -------------------------------
-  // TRANSPORTATION (LOCATION) SECTION
+  // ENHANCED TRANSPORTATION (LOCATION) SECTION
   // -------------------------------
   Widget _buildTravelSection(Retreat retreat) {
     final hasTravelInfo = retreat.meetingLocation.isNotEmpty ||
@@ -573,13 +744,15 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle('Location'),
+        const SizedBox(height: 8),
         Card(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+          elevation: 4,
+          shadowColor: Colors.black.withOpacity(0.1),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -589,50 +762,94 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
                     longitude: retreat.longitude!,
                     zoomLevel: 11,
                   ),
-                  const SizedBox(height: 16),
                 ],
-                if (retreat.meetingLocation.isNotEmpty) ...[
-                  Text(
-                    'Meeting Location:',
-                    style: GoogleFonts.roboto(
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (retreat.meetingLocation.isNotEmpty) ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.meeting_room, color: gradientColor2, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Meeting Location:',
+                                    style: GoogleFonts.roboto(
+                                      textStyle: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ...retreat.meetingLocation.map((line) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Text(
+                                      line,
+                                      style: GoogleFonts.roboto(
+                                        textStyle: TextStyle(
+                                          color: Colors.grey[800],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  )),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (retreat.returnLocation.isNotEmpty) ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.directions_walk, color: gradientColor2, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Return Location:',
+                                    style: GoogleFonts.roboto(
+                                      textStyle: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ...retreat.returnLocation.map((line) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Text(
+                                      line,
+                                      style: GoogleFonts.roboto(
+                                        textStyle: TextStyle(
+                                          color: Colors.grey[800],
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  )),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  for (final line in retreat.meetingLocation)
-                    Text(
-                      line,
-                      style: GoogleFonts.roboto(
-                        textStyle: const TextStyle(color: Colors.black),
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                ],
-                if (retreat.returnLocation.isNotEmpty) ...[
-                  Text(
-                    'Return Location:',
-                    style: GoogleFonts.roboto(
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  for (final line in retreat.returnLocation)
-                    Text(
-                      line,
-                      style: GoogleFonts.roboto(
-                        textStyle: const TextStyle(color: Colors.black),
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                ],
+                ),
               ],
             ),
           ),
@@ -672,33 +889,61 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
             ),
             const SizedBox(height: 16),
             Center(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [gradientColor1, gradientColor2],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: ElevatedButton(
-                  onPressed: () => _navigateToFullDetails(retreat),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+              child: TweenAnimationBuilder(
+                tween: Tween<double>(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 600),
+                builder: (context, double value, child) {
+                  return Transform.scale(
+                    scale: 0.8 + (0.2 * value),
+                    child: Opacity(
+                      opacity: value,
+                      child: child,
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Roboto',
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [gradientColor1, gradientColor2],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: gradientColor1.withOpacity(0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  child: const Text(
-                    'View Full Details',
-                    style: TextStyle(color: Colors.white),
+                  child: ElevatedButton(
+                    onPressed: () => _navigateToFullDetails(retreat),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      textStyle: GoogleFonts.roboto(
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.info_outline, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'View Full Details',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -727,13 +972,31 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
       return;
     }
 
+    // Use PageRouteBuilder for smooth transition
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ExperienceDetailScreen(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => ExperienceDetailScreen(
           retreat: retreat,
           participant: participant,
         ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOutCubic;
+
+          var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          var offsetAnimation = animation.drive(tween);
+
+          return SlideTransition(
+            position: offsetAnimation,
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 500),
       ),
     );
   }
@@ -742,6 +1005,9 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
         title: Text(
           'Access Restricted',
           style: GoogleFonts.roboto(
