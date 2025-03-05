@@ -176,49 +176,62 @@ class _IntegrationCourseScreenState extends State<IntegrationCourseScreen> with 
   Widget build(BuildContext context) {
     final integrationVM = context.watch<IntegrationProvider>();
 
-    return Scaffold(
-      backgroundColor: _backgroundColor,
-      body: RefreshIndicator(
-        color: _accentColor,
-        onRefresh: () => integrationVM.loadData(),
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // Enhanced Hero Header
-            SliverToBoxAdapter(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _buildHeroHeader(_accentColor),
-                  if (integrationVM.userStartDate == null &&
-                      !integrationVM.hasUserClickedStart)
-                    Positioned(
-                      bottom: -30,
-                      right: 20,
-                      child: _buildStartButton(integrationVM),
-                    ),
-                ],
-              ),
-            ),
-
-            // Main Content
-            SliverToBoxAdapter(
-              child: AnimatedPadding(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  (integrationVM.userStartDate == null &&
-                      !integrationVM.hasUserClickedStart)
-                      ? 50
-                      : 20,
-                  20,
-                  20,
+    return GestureDetector(
+      // Add horizontal swipe detection for going back
+      onHorizontalDragEnd: (details) {
+        // If the swipe is from left to right with sufficient velocity
+        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+          // Check if we can pop this route
+          if (Navigator.of(context).canPop()) {
+            // Pop the route to go back
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: _backgroundColor,
+        body: RefreshIndicator(
+          color: _accentColor,
+          onRefresh: () => integrationVM.loadData(),
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // Enhanced Hero Header
+              SliverToBoxAdapter(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _buildHeroHeader(_accentColor),
+                    if (integrationVM.userStartDate == null &&
+                        !integrationVM.hasUserClickedStart)
+                      Positioned(
+                        bottom: -30,
+                        right: 20,
+                        child: _buildStartButton(integrationVM),
+                      ),
+                  ],
                 ),
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                child: _buildBodyContent(integrationVM),
               ),
-            ),
-          ],
+
+              // Main Content
+              SliverToBoxAdapter(
+                child: AnimatedPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    (integrationVM.userStartDate == null &&
+                        !integrationVM.hasUserClickedStart)
+                        ? 50
+                        : 20,
+                    20,
+                    20,
+                  ),
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  child: _buildBodyContent(integrationVM),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

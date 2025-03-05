@@ -5,7 +5,7 @@ import '/viewmodels/day_detail_provider.dart';
 import '/widgets/preparation/daymodule_card.dart';
 import 'day_detail_screen.dart';
 import '/screens/my_retreat/preparation/pps_form_screen.dart';
-import 'package:numinous_way/viewmodels/preparation_provider.dart';
+import 'package:numinous_ways/viewmodels/preparation_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PreparationCourseScreen extends StatefulWidget {
@@ -14,6 +14,8 @@ class PreparationCourseScreen extends StatefulWidget {
 }
 
 class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
+  final Color _accentColor = const Color(0xFFB4347F);
+
   @override
   void initState() {
     super.initState();
@@ -26,66 +28,60 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
   @override
   Widget build(BuildContext context) {
     final prepVM = context.watch<PreparationProvider>();
-    final accentColor = const Color(0xFFB4347F);
 
-    return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () => prepVM.loadData(),
-        child: CustomScrollView(
-          slivers: [
-            // 1) Hero header with the "Start Course" button
-            SliverToBoxAdapter(
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _buildHeroHeader(accentColor),
-                  if (prepVM.userStartDate == null && !prepVM.hasUserClickedStart)
-                    Positioned(
-                      bottom: -30, // Negative offset to overlay the button
-                      right: 20,
-                      child: ElevatedButton(
-                        onPressed: prepVM.startCourse,
-                        style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          backgroundColor: accentColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 14,
-                          ),
-                          elevation: 4,
-                        ),
-                        child: const Text(
-                          'Start Course',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+    return GestureDetector(
+      // Add horizontal swipe detection for going back
+      onHorizontalDragEnd: (details) {
+        // If the swipe is from left to right with sufficient velocity
+        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+          // Check if we can pop this route
+          if (Navigator.of(context).canPop()) {
+            // Pop the route to go back
+            Navigator.of(context).pop();
+          }
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[50], // Light background color
+        body: RefreshIndicator(
+          color: _accentColor,
+          onRefresh: () => prepVM.loadData(),
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // 1) Hero header with the "Start Course" button
+              SliverToBoxAdapter(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _buildHeroHeader(_accentColor),
+                    if (prepVM.userStartDate == null && !prepVM.hasUserClickedStart)
+                      Positioned(
+                        bottom: -30, // Negative offset to overlay the button
+                        right: 20,
+                        child: _buildStartButton(prepVM),
                       ),
-                    ),
-                ],
-              ),
-            ),
-            // 2) Body content with animated padding
-            SliverToBoxAdapter(
-              child: AnimatedPadding(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  (prepVM.userStartDate == null && !prepVM.hasUserClickedStart)
-                      ? 50
-                      : 20,
-                  20,
-                  20,
+                  ],
                 ),
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                child: _buildBodyContent(prepVM, accentColor),
               ),
-            ),
-          ],
+              // 2) Body content with animated padding
+              SliverToBoxAdapter(
+                child: AnimatedPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    (prepVM.userStartDate == null && !prepVM.hasUserClickedStart)
+                        ? 50
+                        : 20,
+                    20,
+                    20,
+                  ),
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  child: _buildBodyContent(prepVM),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -144,8 +140,33 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
     );
   }
 
+  Widget _buildStartButton(PreparationProvider prepVM) {
+    return ElevatedButton(
+      onPressed: prepVM.startCourse,
+      style: ElevatedButton.styleFrom(
+        foregroundColor: Colors.white,
+        backgroundColor: _accentColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30),
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: 14,
+        ),
+        elevation: 4,
+      ),
+      child: const Text(
+        'Start Course',
+        style: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
   /// New progress bar widget matching the Integration screen style.
-  Widget _buildProgressSection(double progressValue, int completedCount, Color accentColor) {
+  Widget _buildProgressSection(double progressValue, int completedCount) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -153,8 +174,8 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
           borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(
             value: progressValue,
-            backgroundColor: accentColor.withOpacity(0.1),
-            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+            backgroundColor: _accentColor.withOpacity(0.1),
+            valueColor: AlwaysStoppedAnimation<Color>(_accentColor),
             minHeight: 8,
           ),
         ),
@@ -167,7 +188,7 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: accentColor,
+                color: _accentColor,
               ),
             ),
             Text(
@@ -175,7 +196,7 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: accentColor,
+                color: _accentColor,
               ),
             ),
           ],
@@ -185,15 +206,23 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
   }
 
   /// Builds the main body content with introduction, progress bar, and module list.
-  Widget _buildBodyContent(PreparationProvider prepVM, Color accentColor) {
+  Widget _buildBodyContent(PreparationProvider prepVM) {
     if (prepVM.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     if (prepVM.errorMessage != null) {
       return Center(
-        child: Text(
-          'Error: ${prepVM.errorMessage}',
-          style: const TextStyle(color: Colors.red),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, color: Colors.red[300], size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Error: ${prepVM.errorMessage}',
+              style: const TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }
@@ -215,27 +244,31 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: accentColor,
+            color: _accentColor,
             height: 1.2,
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
+        Text(
           "Complete this 21-day course with exercises, tasks, and meditations to thoroughly prepare yourself for your upcoming journey. This structured approach ensures you are mentally, emotionally, and spiritually ready.",
           style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w400,
-            height: 1.5,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              height: 1.6,
+              color: Colors.black
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
+
         if (userStartDate != null) ...[
-          _buildProgressSection(progressValue, completedCount, accentColor),
-          const SizedBox(height: 20),
+          _buildProgressSection(progressValue, completedCount),
+          const SizedBox(height: 16),
         ],
+
         Column(
           children: modules.map((module) {
-            final isLast = module.dayNumber == modules.last.dayNumber;
+            final isLast = module == modules.last;
+
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -244,7 +277,7 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
                   width: 40,
                   child: Column(
                     children: [
-                      if (module.dayNumber != modules.first.dayNumber)
+                      if (module != modules.first)
                         Container(
                           width: 2,
                           height: 20,
@@ -254,7 +287,7 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
                         module.isLocked
                             ? Icons.lock
                             : (module.isCompleted ? Icons.check_circle_outline : Icons.lock_open_outlined),
-                        color: module.isLocked ? Colors.grey : (module.isCompleted ? Colors.green : accentColor),
+                        color: module.isLocked ? Colors.grey : (module.isCompleted ? Colors.green : _accentColor),
                       ),
                       if (!isLast)
                         Container(
@@ -265,13 +298,43 @@ class _PreparationCourseScreenState extends State<PreparationCourseScreen> {
                     ],
                   ),
                 ),
-                // Module card.
+                // Module card with animation
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 8.0, bottom: 16.0),
-                    child: GestureDetector(
-                      onTap: () => _onModuleTap(prepVM, module),
-                      child: DayModuleCard(module: module),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: Duration(milliseconds: 400 + (modules.indexOf(module) * 100)),
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(0, 50 * (1 - value)),
+                        child: Opacity(
+                          opacity: value,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8.0, bottom: 16.0),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => _onModuleTap(prepVM, module),
+                          borderRadius: BorderRadius.circular(15),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _accentColor.withOpacity(0.08),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: DayModuleCard(module: module),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
