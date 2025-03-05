@@ -313,253 +313,279 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _backgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryColor, _secondaryColor],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return GestureDetector(
+      // Add tap anywhere to hide keyboard
+      onTap: () {
+        // Dismiss keyboard when tapping outside of text fields
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: _backgroundColor,
+        appBar: AppBar(
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_primaryColor, _secondaryColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
-        ),
-        title: const Text(
-          "Retreat Feedback",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
+          title: const Text(
+            "Retreat Feedback",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
           ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(
-                    "About Your Feedback",
-                    style: TextStyle(
-                      color: _primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  content: const Text(
-                    "Your feedback helps us improve future retreats and better understand the impact of our programs. All responses are confidential and valuable.",
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: _primaryColor,
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text(
+                      "About Your Feedback",
+                      style: TextStyle(
+                        color: _primaryColor,
+                        fontWeight: FontWeight.bold,
                       ),
-                      child: const Text("Got it"),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Introduction Card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _primaryColor.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.feedback_outlined, color: _primaryColor, size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          "We value your feedback! Your insights help us create better experiences for future participants.",
-                          style: TextStyle(
-                            fontSize: 14,
-                            height: 1.5,
-                            color: _textColor,
-                          ),
+                    content: const Text(
+                      "Your feedback helps us improve future retreats and better understand the impact of our programs. All responses are confidential and valuable.",
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: _primaryColor,
                         ),
+                        child: const Text("Got it"),
                       ),
                     ],
                   ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Overall Experience Section
-                _buildFormSection(
-                  "Overall Experience",
-                  [
-                    _buildRatingSection(
-                      title: "How would you rate your overall experience?",
-                      description: "1 = Poor, 10 = Excellent",
-                      value: _overallExperience,
-                      onChanged: (value) => setState(() => _overallExperience = value),
-                      min: 1,
-                      max: 10,
-                      icon: Icons.star_outline,
+                );
+              },
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Introduction Card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _primaryColor.withOpacity(0.3)),
                     ),
-                    _buildRatingSection(
-                      title: "How secure and supported did you feel?",
-                      description: "1 = Not at all, 10 = Completely",
-                      value: _securitySupport,
-                      onChanged: (value) => setState(() => _securitySupport = value),
-                      min: 1,
-                      max: 10,
-                      icon: Icons.security,
-                    ),
-                    _buildTextField(
-                      controller: _enhanceSecurityCtrl,
-                      label: "What could enhance your sense of security?",
-                      hintText: "Share your suggestions...",
-                      icon: Icons.psychology,
-                    ),
-                  ],
-                ),
-
-                // Group Experience Section
-                _buildFormSection(
-                  "Group Experience",
-                  [
-                    _buildTextField(
-                      controller: _smallGroupFeedbackCtrl,
-                      label: "How was your small group experience?",
-                      hintText: "Share your thoughts about group dynamics...",
-                      icon: Icons.groups,
-                    ),
-                    _buildRatingSection(
-                      title: "Balance of group activities vs free time",
-                      description: "0 = Too many group activities, 10 = Too much free time",
-                      value: _groupVsFreeTime,
-                      onChanged: (value) => setState(() => _groupVsFreeTime = value),
-                      min: 0,
-                      max: 10,
-                      icon: Icons.balance,
-                    ),
-                  ],
-                ),
-
-                // Highlights and Challenges Section
-                _buildFormSection(
-                  "Highlights & Challenges",
-                  [
-                    _buildTextField(
-                      controller: _highlightCtrl,
-                      label: "What were your highlights?",
-                      hintText: "Share your favorite moments or insights...",
-                      icon: Icons.lightbulb_outline,
-                    ),
-                    _buildTextField(
-                      controller: _challengingCtrl,
-                      label: "What challenges did you face?",
-                      hintText: "Share any difficulties or concerns...",
-                      icon: Icons.trending_up,
-                    ),
-                  ],
-                ),
-
-                // Facilities and Comfort Section
-                _buildFormSection(
-                  "Facilities & Accommodation",
-                  [
-                    _buildRatingSection(
-                      title: "How comfortable were the facilities?",
-                      description: "1 = Not comfortable, 10 = Extremely comfortable",
-                      value: _comfortFacilities,
-                      onChanged: (value) => setState(() => _comfortFacilities = value),
-                      min: 1,
-                      max: 10,
-                      icon: Icons.hotel,
-                    ),
-                  ],
-                ),
-
-                // Improvements and Recommendations Section
-                _buildFormSection(
-                  "Improvements & Recommendations",
-                  [
-                    _buildTextField(
-                      controller: _makeBetterCtrl,
-                      label: "How can we improve?",
-                      hintText: "Share your suggestions for future retreats...",
-                      icon: Icons.auto_fix_high,
-                    ),
-                    _buildTextField(
-                      controller: _recommendationCtrl,
-                      label: "Would you recommend this retreat?",
-                      hintText: "Tell us why or why not...",
-                      icon: Icons.recommend,
-                    ),
-                    _buildTextField(
-                      controller: _additionalThoughtsCtrl,
-                      label: "Additional Thoughts",
-                      hintText: "Any other feedback you'd like to share...",
-                      icon: Icons.more_horiz,
-                      maxLines: 4,
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 24),
-
-                // Submit Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: _primaryColor,
-                      elevation: 5,
-                      shadowColor: _primaryColor.withOpacity(0.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: _isSubmitting ? null : _submitFeedback,
-                    child: _isSubmitting
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Row(
                       children: [
-                        Icon(Icons.send_rounded),
-                        SizedBox(width: 8),
-                        Text(
-                          "SUBMIT FEEDBACK",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
+                        Icon(Icons.feedback_outlined, color: _primaryColor, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "We value your feedback! Your insights help us create better experiences for future participants.",
+                            style: TextStyle(
+                              fontSize: 14,
+                              height: 1.5,
+                              color: _textColor,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 40),
-              ],
+                  const SizedBox(height: 24),
+
+                  // Overall Experience Section
+                  _buildFormSection(
+                    "Overall Experience",
+                    [
+                      _buildRatingSection(
+                        title: "How would you rate your overall experience?",
+                        description: "1 = Poor, 10 = Excellent",
+                        value: _overallExperience,
+                        onChanged: (value) => setState(() => _overallExperience = value),
+                        min: 1,
+                        max: 10,
+                        icon: Icons.star_outline,
+                      ),
+                      _buildRatingSection(
+                        title: "How secure and supported did you feel?",
+                        description: "1 = Not at all, 10 = Completely",
+                        value: _securitySupport,
+                        onChanged: (value) => setState(() => _securitySupport = value),
+                        min: 1,
+                        max: 10,
+                        icon: Icons.security,
+                      ),
+                      _buildTextField(
+                        controller: _enhanceSecurityCtrl,
+                        label: "What could enhance your sense of security?",
+                        hintText: "Share your suggestions...",
+                        icon: Icons.psychology,
+                      ),
+                    ],
+                  ),
+
+                  // Group Experience Section
+                  _buildFormSection(
+                    "Group Experience",
+                    [
+                      _buildTextField(
+                        controller: _smallGroupFeedbackCtrl,
+                        label: "How was your small group experience?",
+                        hintText: "Share your thoughts about group dynamics...",
+                        icon: Icons.groups,
+                      ),
+                      _buildRatingSection(
+                        title: "Balance of group activities vs free time",
+                        description: "0 = Too many group activities, 10 = Too much free time",
+                        value: _groupVsFreeTime,
+                        onChanged: (value) => setState(() => _groupVsFreeTime = value),
+                        min: 0,
+                        max: 10,
+                        icon: Icons.balance,
+                      ),
+                    ],
+                  ),
+
+                  // Highlights and Challenges Section
+                  _buildFormSection(
+                    "Highlights & Challenges",
+                    [
+                      _buildTextField(
+                        controller: _highlightCtrl,
+                        label: "What were your highlights?",
+                        hintText: "Share your favorite moments or insights...",
+                        icon: Icons.lightbulb_outline,
+                      ),
+                      _buildTextField(
+                        controller: _challengingCtrl,
+                        label: "What challenges did you face?",
+                        hintText: "Share any difficulties or concerns...",
+                        icon: Icons.trending_up,
+                      ),
+                    ],
+                  ),
+
+                  // Facilities and Comfort Section
+                  _buildFormSection(
+                    "Facilities & Accommodation",
+                    [
+                      _buildRatingSection(
+                        title: "How comfortable were the facilities?",
+                        description: "1 = Not comfortable, 10 = Extremely comfortable",
+                        value: _comfortFacilities,
+                        onChanged: (value) => setState(() => _comfortFacilities = value),
+                        min: 1,
+                        max: 10,
+                        icon: Icons.hotel,
+                      ),
+                    ],
+                  ),
+
+                  // Improvements and Recommendations Section
+                  _buildFormSection(
+                    "Improvements & Recommendations",
+                    [
+                      _buildTextField(
+                        controller: _makeBetterCtrl,
+                        label: "How can we improve?",
+                        hintText: "Share your suggestions for future retreats...",
+                        icon: Icons.auto_fix_high,
+                      ),
+                      _buildTextField(
+                        controller: _recommendationCtrl,
+                        label: "Would you recommend this retreat?",
+                        hintText: "Tell us why or why not...",
+                        icon: Icons.recommend,
+                      ),
+                      _buildTextField(
+                        controller: _additionalThoughtsCtrl,
+                        label: "Additional Thoughts",
+                        hintText: "Any other feedback you'd like to share...",
+                        icon: Icons.more_horiz,
+                        maxLines: 4,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Submit Button with gradient
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [_primaryColor, _secondaryColor],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _primaryColor.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _submitFeedback,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          disabledBackgroundColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          shadowColor: Colors.transparent,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isSubmitting
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.send_rounded, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              "SUBMIT FEEDBACK",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
         ),

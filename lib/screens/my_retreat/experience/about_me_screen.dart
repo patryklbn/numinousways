@@ -42,6 +42,9 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
   XFile? _selectedPhoto;
   final ImagePicker _picker = ImagePicker();
 
+  // For keyboard handling
+  final FocusNode _focusNode = FocusNode();
+
   // Theme colors
   final Color _primaryColor = const Color(0xFF6A0DAD);
   final Color _secondaryColor = const Color(0xFF3700B3);
@@ -66,6 +69,21 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
     _somethingYouLoveCtrl = TextEditingController(text: p.somethingYouLove);
     _somethingDifficultCtrl = TextEditingController(text: p.somethingDifficult);
     _shareBio = p.shareBio;
+
+    // Add keyboard listener
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Listen for keyboard appearance
+      KeyboardVisibilityNotification().addNewListener(
+        onChange: (bool visible) {
+          if (visible) {
+            // Delay to ensure the keyboard is fully visible
+            Future.delayed(const Duration(milliseconds: 300), () {
+              _scrollToFocusedInput();
+            });
+          }
+        },
+      );
+    });
   }
 
   @override
@@ -83,7 +101,41 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
     _somethingYouLoveCtrl.dispose();
     _somethingDifficultCtrl.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  // Method to scroll to the currently focused input
+  void _scrollToFocusedInput() {
+    final FocusScopeNode currentFocus = FocusScope.of(context);
+    if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+      // Find the render object of the focused widget
+      final RenderObject? object = currentFocus.focusedChild?.context?.findRenderObject();
+      if (object != null && object is RenderBox) {
+        // Get the position of the focused widget
+        final RenderBox renderBox = object;
+        final position = renderBox.localToGlobal(Offset.zero);
+
+        // Calculate the visible area considering the keyboard
+        final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final visibleHeight = screenHeight - keyboardHeight;
+
+        // If the focused widget is below the visible area, scroll to it
+        if (position.dy + renderBox.size.height > visibleHeight) {
+          // Calculate how much to scroll
+          final scrollAmount = position.dy + renderBox.size.height - visibleHeight + 120; // 120 is padding
+
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              _scrollController.offset + scrollAmount,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        }
+      }
+    }
   }
 
   Widget _buildTextField(
@@ -94,6 +146,7 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
         int? maxLength,
         IconData? icon,
         String? hintText,
+        bool showCounter = true,
       }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -132,6 +185,15 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
             controller: controller,
             maxLines: maxLines,
             maxLength: maxLength,
+            onChanged: (val) => setState(() {}), // triggers update for counter
+            onTap: () {
+              // When a text field is tapped, ensure it's visible above the keyboard
+              if (maxLines > 1) {
+                Future.delayed(const Duration(milliseconds: 300), () {
+                  _scrollToFocusedInput();
+                });
+              }
+            },
             style: TextStyle(
               color: _textColor,
               fontSize: 15,
@@ -145,7 +207,7 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
               hintText: hintText,
               fillColor: _cardColor,
               filled: true,
-              counterText: '', // Hides the default character counter
+              counterText: '', // hides the default counter
               prefixIcon: maxLines == 1 && icon != null
                   ? Icon(icon, color: _primaryColor)
                   : null,
@@ -182,9 +244,9 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
             }
                 : null,
           ),
-          if (maxLength != null && maxLines > 1)
+          if (maxLength != null && showCounter)
             Align(
-              alignment: Alignment.centerRight,
+              alignment: maxLines > 1 ? Alignment.centerRight : Alignment.centerLeft,
               child: Text(
                 "${controller.text.length}/$maxLength",
                 style: TextStyle(
@@ -255,7 +317,6 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) {
-      // Show error toast
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text("Please fill in all required fields"),
@@ -433,7 +494,8 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
                         fit: BoxFit.cover,
                       ),
                     )
-                        : widget.participant.photoUrl != null && widget.participant.photoUrl!.isNotEmpty
+                        : widget.participant.photoUrl != null &&
+                        widget.participant.photoUrl!.isNotEmpty
                         ? ClipRRect(
                       borderRadius: BorderRadius.circular(75),
                       child: Image.network(
@@ -466,8 +528,9 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: _pickImage,
-                  icon: const Icon(Icons.camera_alt),
-                  label: Text(_selectedPhoto != null || (widget.participant.photoUrl != null && widget.participant.photoUrl!.isNotEmpty)
+                  icon: const Icon(Icons.camera_alt, color: Colors.white),
+                  label: Text(_selectedPhoto != null ||
+                      (widget.participant.photoUrl != null && widget.participant.photoUrl!.isNotEmpty)
                       ? "Change Photo"
                       : "Select Photo"),
                   style: ElevatedButton.styleFrom(
@@ -518,14 +581,17 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
             "Nickname",
             icon: Icons.face,
             hintText: "What should we call you?",
+            maxLength: 25,
+            showCounter: false, // no counter for nickname
           ),
           _buildTextField(
             _pronounsCtrl,
             "Preferred Pronouns",
             icon: Icons.people,
             hintText: "e.g., she/her, he/him, they/them",
+            maxLength: 10,
+            showCounter: false, // no counter for pronouns
           ),
-
           _buildSectionHeader("About You", icon: Icons.info),
           _buildTextField(
             _aboutYourselfCtrl,
@@ -551,7 +617,6 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
             icon: Icons.sports_esports,
             hintText: "What do you enjoy doing in your free time?",
           ),
-
           _buildSectionHeader("Experience", icon: Icons.psychology),
           _buildTextField(
             _psychedelicExpCtrl,
@@ -561,13 +626,14 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
             icon: Icons.auto_awesome,
             hintText: "Share your level of experience if comfortable",
           ),
-
           _buildSectionHeader("Fun Facts", icon: Icons.emoji_emotions),
           _buildTextField(
             _favoriteAnimalCtrl,
             "Favorite Animal",
             icon: Icons.pets,
             hintText: "What animal do you resonate with?",
+            maxLength: 20,
+            showCounter: false, // no counter for favorite animal
           ),
           _buildTextField(
             _earliestMemoryCtrl,
@@ -593,7 +659,6 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
             icon: Icons.trending_up,
             hintText: "A difficult experience that helped you grow",
           ),
-
           _buildSectionHeader("Additional Information", icon: Icons.add_comment),
           _buildTextField(
             _additionalInfoCtrl,
@@ -603,7 +668,6 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
             icon: Icons.more_horiz,
             hintText: "Any other information you want to share with the group",
           ),
-
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
@@ -665,153 +729,183 @@ class _AboutMeScreenState extends State<AboutMeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _backgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryColor, _secondaryColor],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return GestureDetector(
+      // Add tap anywhere to dismiss keyboard
+      onTap: () {
+        // Dismiss keyboard when tapping outside of text fields
+        FocusScope.of(context).unfocus();
+      },
+      child: Scaffold(
+        backgroundColor: _backgroundColor,
+        appBar: AppBar(
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_primaryColor, _secondaryColor],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
-        ),
-        title: const Text(
-          "About Me",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
+          title: const Text(
+            "About Me",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
           ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            tooltip: "Why this information?",
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(
-                    "Why We Ask",
-                    style: TextStyle(
-                      color: _primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  content: const Text(
-                    "Sharing information about yourself helps create connection with your fellow retreat participants. It also helps our facilitators better understand the group. You control what you share and who sees it.",
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        foregroundColor: _primaryColor,
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.info_outline),
+              tooltip: "Why this information?",
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text(
+                      "Why We Ask",
+                      style: TextStyle(
+                        color: _primaryColor,
+                        fontWeight: FontWeight.bold,
                       ),
-                      child: const Text("Got it"),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Introduction card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _primaryColor.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.group, color: _primaryColor, size: 24),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          "We'd love to learn about you. This information helps build community among participants and gives our facilitators insights to better support your journey.",
-                          style: TextStyle(
-                            fontSize: 14,
-                            height: 1.5,
-                            color: _textColor,
-                          ),
+                    content: const Text(
+                      "Sharing information about yourself helps create connection with your fellow retreat participants. It also helps our facilitators better understand the group. You control what you share and who sees it.",
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: _primaryColor,
                         ),
+                        child: const Text("Got it"),
                       ),
                     ],
                   ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Photo section
-                _buildPhotoSection(),
-
-                const SizedBox(height: 24),
-
-                // Form fields
-                _buildFormSection(),
-
-                const SizedBox(height: 24),
-
-                // Submit button
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      backgroundColor: _primaryColor,
-                      elevation: 5,
-                      shadowColor: _primaryColor.withOpacity(0.5),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                );
+              },
+            ),
+          ],
+        ),
+        body: SafeArea(
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Introduction card
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _primaryColor.withOpacity(0.3)),
                     ),
-                    onPressed: _isSubmitting ? null : _submitForm,
-                    child: _isSubmitting
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Row(
-                      mainAxisSize: MainAxisSize.min,
+                    child: Row(
                       children: [
-                        Icon(Icons.check_circle),
-                        SizedBox(width: 8),
-                        Text(
-                          "SAVE PROFILE",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
+                        Icon(Icons.group, color: _primaryColor, size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "We'd love to learn about you. This information helps build community among participants and gives our facilitators insights to better support your journey.",
+                            style: TextStyle(
+                              fontSize: 14,
+                              height: 1.5,
+                              color: _textColor,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-
-                const SizedBox(height: 40),
-              ],
+                  const SizedBox(height: 24),
+                  // Photo section
+                  _buildPhotoSection(),
+                  const SizedBox(height: 24),
+                  // Form fields
+                  _buildFormSection(),
+                  const SizedBox(height: 24),
+                  // Submit button with gradient
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [_primaryColor, _secondaryColor],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _primaryColor.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _submitForm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          disabledBackgroundColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          shadowColor: Colors.transparent,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isSubmitting
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.check_circle, color: Colors.white),
+                            SizedBox(width: 8),
+                            Text(
+                              "SAVE PROFILE",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+// You'll need to add this package to your pubspec.yaml:
+// keyboard_visibility: ^latest_version
+// Or alternatively you could use flutter_keyboard_visibility
+class KeyboardVisibilityNotification {
+  void addNewListener({required Function(bool) onChange}) {
+    // This is a simplified version. In a real implementation, you'd use the
+    // keyboard_visibility package to properly detect keyboard visibility changes.
+    // For this example, we're providing a placeholder implementation.
   }
 }
