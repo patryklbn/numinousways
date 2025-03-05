@@ -209,8 +209,8 @@ class PreparationProvider extends ChangeNotifier {
               id: i,
               title: "Daily Retreat Reminder",
               body: "Day $i is available! Complete your daily tasks today.",
-              hour: 18,
-              minute: 30,
+              hour: 19,
+              minute: 48,
               second: 0,
               startDate: dayUnlockDate,
             );
