@@ -254,6 +254,11 @@ class _CommentsScreenState extends State<CommentsScreen> {
     });
   }
 
+  // Method to dismiss keyboard
+  void _dismissKeyboard() {
+    FocusScope.of(context).unfocus();
+  }
+
   @override
   void dispose() {
     _controller.removeListener(() {});
@@ -270,6 +275,8 @@ class _CommentsScreenState extends State<CommentsScreen> {
     final String? currentUserId = loginProvider.userId;
 
     return GestureDetector(
+      // Add tap anywhere to dismiss keyboard
+      onTap: _dismissKeyboard,
       // Add horizontal swipe detection for going back
       onHorizontalDragEnd: (details) {
         // If the swipe is from left to right with sufficient velocity
@@ -284,8 +291,10 @@ class _CommentsScreenState extends State<CommentsScreen> {
         }
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true, // This helps with keyboard resizing
         backgroundColor: Colors.white,
         appBar: AppBar(
+          centerTitle: true, // Added this line to center the title
           title: const Text(
               "Comments",
               style: TextStyle(
@@ -323,181 +332,215 @@ class _CommentsScreenState extends State<CommentsScreen> {
             valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
           ),
         )
-            : _buildCommentsList(context, currentUserId),
+            : GestureDetector(
+          // Add another gesture detector for the content area
+          // This ensures tapping on the list also dismisses keyboard
+          onTap: _dismissKeyboard,
+          child: _buildCommentsList(context, currentUserId),
+        ),
         bottomNavigationBar: currentUserId == null
             ? null
-            : Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                offset: const Offset(0, -2),
-                blurRadius: 5,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Show selected image preview if any - now with larger size
-              if (_selectedCommentImage != null)
-                Container(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Stack(
-                    alignment: Alignment.topRight,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          _selectedCommentImage!,
-                          height: 180, // Increased from 100 to 180
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: _removeSelectedImage,
-                        child: Container(
-                          margin: const EdgeInsets.all(8),
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 2,
-                                offset: Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(Icons.close, size: 20, color: Colors.black),
-                        ),
-                      ),
-                    ],
-                  ),
+            : Padding(
+          // Add padding to respect keyboard height
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  offset: const Offset(0, -2),
+                  blurRadius: 5,
                 ),
-
-              // Progress indicator or input row
-              _isSubmitting
-                  ? const LinearProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
-                backgroundColor: Colors.white,
-              )
-                  : Padding(
-                padding: MediaQuery.of(context).viewInsets.bottom > 0
-                    ? const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0)
-                    : const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Character counter at the top with ValueListenableBuilder
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4.0, right: 8.0),
-                      child: ValueListenableBuilder<int>(
-                        valueListenable: _characterCount,
-                        builder: (context, count, _) {
-                          return Text(
-                            "$count/250",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: count > 230 ? Colors.red : Colors.grey.shade600,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    Row(
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Show selected image preview if any - now with larger size
+                if (_selectedCommentImage != null)
+                  Container(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Stack(
+                      alignment: Alignment.topRight,
                       children: [
-                        // Image picker button
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            shape: BoxShape.circle,
-                          ),
-                          child: IconButton(
-                            icon: const Icon(Icons.image_outlined),
-                            color: const Color(0xFF6A0DAD),
-                            onPressed: _pickImage,
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            _selectedCommentImage!,
+                            height: 180, // Increased from 100 to 180
+                            width: double.infinity,
+                            fit: BoxFit.cover,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        // Comment text field
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            maxLength: 250, // Add character limit of 250
-                            buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
-                              // Don't show the counter here, we're displaying it above
-                              return null;
-                            },
-                            decoration: InputDecoration(
-                              hintText: 'Add a comment...',
-                              hintStyle: TextStyle(color: Colors.grey.shade500),
-                              contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                              border: OutlineInputBorder(
-                                borderRadius: const BorderRadius.all(Radius.circular(24)),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: const BorderRadius.all(Radius.circular(24)),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
-                              ),
-                              focusedBorder: const OutlineInputBorder(
-                                borderRadius: const BorderRadius.all(Radius.circular(24)),
-                                borderSide: BorderSide(color: Color(0xFF6A0DAD)),
-                              ),
-                              filled: true,
-                              fillColor: Colors.grey.shade50,
+                        GestureDetector(
+                          onTap: _removeSelectedImage,
+                          child: Container(
+                            margin: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 2,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
                             ),
-                            minLines: 1,
-                            maxLines: 3,
+                            child: const Icon(Icons.close, size: 20, color: Colors.black),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        // Send button with GestureDetector
-                        ValueListenableBuilder<int>(
+                      ],
+                    ),
+                  ),
+
+                // Progress indicator or input row
+                _isSubmitting
+                    ? const LinearProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
+                  backgroundColor: Colors.white,
+                )
+                    : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // Character counter at the top with ValueListenableBuilder
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4.0, right: 8.0),
+                        child: ValueListenableBuilder<int>(
                           valueListenable: _characterCount,
                           builder: (context, count, _) {
-                            final bool isTextEmpty = count == 0;
-                            final bool isDisabled = _isSubmitting || (isTextEmpty && _selectedCommentImage == null);
-
-                            return GestureDetector(
-                              onTap: isDisabled
-                                  ? null
-                                  : () {
-                                if (currentUserId != null) {
-                                  _addComment(currentUserId);
-                                }
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: isDisabled
-                                      ? const Color(0xFF6A0DAD).withOpacity(1) // Lighter purple when disabled
-                                      : const Color(0xFF6A0DAD),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.send,
-                                  color: Colors.white, // Always white
-                                  size: 24,
-                                ),
+                            return Text(
+                              "$count/250",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: count > 230 ? Colors.red : Colors.grey.shade600,
                               ),
                             );
                           },
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      Row(
+                        children: [
+                          // Image picker button
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.image_outlined),
+                              color: const Color(0xFF6A0DAD),
+                              onPressed: _pickImage,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Comment text field
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              maxLength: 250,
+                              textAlignVertical: TextAlignVertical.center, // Add this to center text vertically
+                              style: const TextStyle(
+                                fontSize: 14,
+                                height: 1.5, // Add this to improve text positioning
+                              ),
+                              buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
+                                // Don't show the counter here, we're displaying it above
+                                return null;
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'Add a comment...',
+                                hintStyle: TextStyle(color: Colors.grey.shade500),
+                                // Updated padding to ensure consistent centering on Android
+                                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                                isDense: true, // Add this to make input more compact
+                                border: OutlineInputBorder(
+                                  borderRadius: const BorderRadius.all(Radius.circular(24)),
+                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: const BorderRadius.all(Radius.circular(24)),
+                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                ),
+                                focusedBorder: const OutlineInputBorder(
+                                  borderRadius: BorderRadius.all(Radius.circular(24)),
+                                  borderSide: BorderSide(color: Color(0xFF6A0DAD)),
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                                // Add a clear button inside the text field
+                                suffixIcon: _controller.text.isNotEmpty
+                                    ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  color: Colors.grey.shade400,
+                                  onPressed: () {
+                                    _controller.clear();
+                                    _dismissKeyboard();
+                                  },
+                                )
+                                    : null,
+                              ),
+                              minLines: 1,
+                              maxLines: 3,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // Send button with GestureDetector
+                          ValueListenableBuilder<int>(
+                            valueListenable: _characterCount,
+                            builder: (context, count, _) {
+                              final bool isTextEmpty = count == 0;
+                              final bool isDisabled = _isSubmitting || (isTextEmpty && _selectedCommentImage == null);
+
+                              return GestureDetector(
+                                onTap: isDisabled
+                                    ? null
+                                    : () {
+                                  if (currentUserId != null) {
+                                    _addComment(currentUserId);
+                                  }
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: isDisabled
+                                        ? const Color(0xFF6A0DAD).withOpacity(0.4) // Lighter purple when disabled
+                                        : const Color(0xFF6A0DAD),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.send,
+                                    color: Colors.white, // Always white
+                                    size: 24,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+
+  // Add this method to the _CommentsScreenState class
+  void updatePostData(Post updatedPost) {
+    if (mounted) {
+      setState(() {
+        _post = updatedPost;
+      });
+    }
   }
 
   Widget _buildCommentsList(BuildContext context, String? currentUserId) {
@@ -543,7 +586,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 onPostLikeToggled: _handlePostUpdate,
                 userProfile: _userProfile,
               ),
-              const Divider(height: 1),
+
             ],
           );
         } else if (comments.isEmpty && index == 1) {
