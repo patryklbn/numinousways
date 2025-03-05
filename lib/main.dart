@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:numinous_ways/screens/privacy_policy.dart';
 import 'package:provider/provider.dart';
 
 // Firebase config
@@ -122,24 +123,59 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loginProvider = context.watch<LoginProvider>();
+    final user = loginProvider.user; // The current Firebase User (or null)
 
-    // If user NOT logged in => go to Onboarding
-    if (!loginProvider.isLoggedIn || loginProvider.userId == null) {
-      return MaterialApp(
-        title: 'Your App Name',
-        theme: _buildTheme(),
-        home: const OnboardingScreen(),
-        routes: {
-          '/login': (context) => LoginScreen(),
-          '/onboarding': (context) => OnboardingScreen(),
-          '/register': (context) => RegisterScreen(),
-          '/forgot-password': (context) => ForgotPasswordScreen(),
-        },
-      );
+    // Debug print to help diagnose issues
+    print("Current user: ${user?.email}, Verified: ${user?.emailVerified}");
+
+    // Create ALL routes that will be available throughout the app
+    final Map<String, Widget Function(BuildContext)> allRoutes = {
+      // Auth and Common Routes
+      '/login': (context) => const LoginScreen(),
+      '/onboarding': (context) => const OnboardingScreen(),
+      '/register': (context) => const RegisterScreen(),
+      '/forgot-password': (context) => const ForgotPasswordScreen(),
+      '/timeline': (context) => const TimelineScreen(),
+
+      // Main App Routes
+      '/my_retreat': (context) => const MyRetreatScreen(),
+      '/retreat_info': (context) => const RetreatInfoScreen(),
+      '/preparation': (context) => PreparationCourseScreen(),
+      '/experience': (context) => const ExperienceMainScreen(),
+      '/integration': (context) => IntegrationCourseScreen(),
+      '/ai_gallery': (context) => const AiGalleryScreen(),
+      '/ai_prompt': (context) => const AiPromptScreen(),
+      '/privacy_policy': (context) => const PrivacyPolicyScreen(),
+      '/edit_profile': (context) => EditProfileScreen(),
+
+      // Profile route with parameters
+      '/profile_screen': (context) {
+        final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+        return ProfileScreen(
+          userId: args?['userId'] as String? ?? user?.uid ?? '',
+          loggedInUserId: args?['loggedInUserId'] as String? ?? user?.uid ?? '',
+        );
+      },
+    };
+
+    // Determine home screen based on authentication and verification status
+    Widget homeScreen;
+
+    if (user == null) {
+      // Not logged in
+      homeScreen = const OnboardingScreen();
+    } else if (!user.emailVerified) {
+      // Logged in but not verified
+      homeScreen = const LoginScreen();
+    } else {
+      // Logged in and verified
+      homeScreen = const TimelineScreen();
     }
 
-    // If user is logged in => go to main flow
-    return ChangeNotifierProvider<PreparationProvider>(
+    // Create a single MaterialApp with conditional providers as needed
+    return user != null && user.emailVerified
+        ? ChangeNotifierProvider<PreparationProvider>(
+      // Only add this provider for verified users
       create: (_) => PreparationProvider(
         userId: loginProvider.userId!,
         prepService: PreparationCourseService(FirebaseFirestore.instance),
@@ -147,13 +183,14 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Your App Name',
         theme: _buildTheme(),
-        home: TimelineScreen(),
+        home: homeScreen,
+        routes: allRoutes,
         onGenerateRoute: (settings) {
           // Preparation day detail route
           if (settings.name == '/day_detail') {
-            final args = settings.arguments as Map<String, dynamic>;
-            final int dayNumber = args['dayNumber'] as int;
-            final bool isDayCompleted = args['isDayCompleted'] as bool;
+            final args = settings.arguments as Map<String, dynamic>?;
+            final int dayNumber = args?['dayNumber'] as int? ?? 1;
+            final bool isDayCompleted = args?['isDayCompleted'] as bool? ?? false;
 
             return MaterialPageRoute(
               builder: (context) => ChangeNotifierProvider<DayDetailProvider>(
@@ -173,9 +210,9 @@ class MyApp extends StatelessWidget {
 
           // Integration day detail route
           if (settings.name == '/integration_day_detail') {
-            final args = settings.arguments as Map<String, dynamic>;
-            final int dayNumber = args['dayNumber'] as int;
-            final bool isDayCompleted = args['isDayCompleted'] as bool;
+            final args = settings.arguments as Map<String, dynamic>?;
+            final int dayNumber = args?['dayNumber'] as int? ?? 1;
+            final bool isDayCompleted = args?['isDayCompleted'] as bool? ?? false;
 
             return MaterialPageRoute(
               builder: (context) => ChangeNotifierProvider<IntegrationDayDetailProvider>(
@@ -193,30 +230,17 @@ class MyApp extends StatelessWidget {
             );
           }
 
+          // If no match, return null to let the framework handle it
           return null;
         },
-        routes: {
-          '/onboarding': (context) => OnboardingScreen(),
-          '/register': (context) => RegisterScreen(),
-          '/forgot-password': (context) => ForgotPasswordScreen(),
-          '/timeline': (context) => TimelineScreen(),
-          '/profile_screen': (context) {
-            final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>;
-            return ProfileScreen(
-              userId: args['userId'] as String,
-              loggedInUserId: args['loggedInUserId'] as String,
-            );
-          },
-          '/edit_profile': (context) => EditProfileScreen(),
-          '/my_retreat': (context) => MyRetreatScreen(),
-          '/retreat_info': (context) => RetreatInfoScreen(),
-          '/preparation': (context) => PreparationCourseScreen(),
-          '/experience': (context) => ExperienceMainScreen(),
-          '/integration': (context) => IntegrationCourseScreen(),
-          '/ai_gallery': (context) => AiGalleryScreen(),
-          '/ai_prompt': (context) => const AiPromptScreen(),
-        },
       ),
+    )
+        : MaterialApp(
+      // MaterialApp for non-verified users
+      title: 'Your App Name',
+      theme: _buildTheme(),
+      home: homeScreen,
+      routes: allRoutes,
     );
   }
 
