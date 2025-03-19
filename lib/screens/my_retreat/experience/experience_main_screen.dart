@@ -36,6 +36,11 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> with Single
 
   Retreat? _selectedRetreat;
   PageController? _galleryPageController;
+  final ScrollController _horizontalScrollController = ScrollController();
+
+  // Scroll indicator state variables
+  bool _showScrollIndicator = true;
+  bool _userHasScrolled = false;
 
   // For toggling "Show more / Show less" in each retreat's shortDescription
   final Map<String, bool> _expandedRetreats = {};
@@ -58,10 +63,29 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> with Single
     );
     _animationController.forward();
 
+    // Add scroll listener to hide indicator once user has scrolled
+    _horizontalScrollController.addListener(() {
+      if (_horizontalScrollController.offset > 10 && !_userHasScrolled) {
+        setState(() {
+          _userHasScrolled = true;
+          _showScrollIndicator = false;
+        });
+      }
+    });
+
     // Fetch all active (non-archived) retreats
     _retreatsFuture = _retreatService.fetchActiveRetreats();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _myRetreatService = Provider.of<MyRetreatService>(context, listen: false);
+
+      // Auto-hide scroll indicator after 5 seconds even if user hasn't scrolled
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() {
+            _showScrollIndicator = false;
+          });
+        }
+      });
     });
   }
 
@@ -69,6 +93,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> with Single
   void dispose() {
     _animationController.dispose();
     _galleryPageController?.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -175,6 +200,17 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> with Single
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+// Title area with just the scroll indicator when needed
+                    if (retreats.length > 1 && _showScrollIndicator)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          children: [
+                            _buildScrollIndicator(),
+                          ],
+                        ),
+                      ),
+
                     // 1) Horizontal list of retreat cards
                     _buildHorizontalRetreatList(retreats),
                     const SizedBox(height: 24),
@@ -191,39 +227,107 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> with Single
     );
   }
 
-  /// Builds a horizontal-scrolling list of retreat cards
-  Widget _buildHorizontalRetreatList(List<Retreat> retreats) {
-    return SizedBox(
-      height: 377,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 1),
-        separatorBuilder: (context, index) => const SizedBox(width: 1),
-        itemCount: retreats.length,
-        itemBuilder: (context, index) {
-          final retreat = retreats[index];
-          return AnimationConfiguration.staggeredList(
-            position: index,
-            duration: const Duration(milliseconds: 375),
-            child: SlideAnimation(
-              horizontalOffset: 50.0,
-              child: FadeInAnimation(
-                child: SizedBox(
-                  width: 335,
-                  child: RetreatCard(
-                    retreat: retreat,
-                    onTap: () {
-                      setState(() {
-                        _selectedRetreat = retreat;
-                      });
-                    },
+  /// Builds the horizontal scroll indicator
+  Widget _buildScrollIndicator() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 800),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Row(
+            children: [
+              Icon(
+                Icons.swipe_right_alt,
+                color: gradientColor2.withOpacity(0.7),
+                size: 20,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Swipe to see more',
+                style: GoogleFonts.roboto(
+                  textStyle: TextStyle(
+                    fontSize: 13,
+                    color: gradientColor2.withOpacity(0.7),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-            ),
-          );
-        },
-      ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Builds a horizontal-scrolling list of retreat cards
+  Widget _buildHorizontalRetreatList(List<Retreat> retreats) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 377,
+          child: ListView.separated(
+            controller: _horizontalScrollController,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 1),
+            separatorBuilder: (context, index) => const SizedBox(width: 1),
+            itemCount: retreats.length,
+            itemBuilder: (context, index) {
+              final retreat = retreats[index];
+              return AnimationConfiguration.staggeredList(
+                position: index,
+                duration: const Duration(milliseconds: 375),
+                child: SlideAnimation(
+                  horizontalOffset: 50.0,
+                  child: FadeInAnimation(
+                    child: SizedBox(
+                      width: 335,
+                      child: RetreatCard(
+                        retreat: retreat,
+                        onTap: () {
+                          setState(() {
+                            _selectedRetreat = retreat;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        // Pagination dots for indicating position
+        if (retreats.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 12.0),
+            child: _buildPaginationDots(retreats),
+          ),
+      ],
+    );
+  }
+
+  /// Build pagination dots that indicate which card is visible
+  Widget _buildPaginationDots(List<Retreat> retreats) {
+    // Find index of currently selected retreat
+    final int selectedIndex = retreats.indexWhere((retreat) => retreat.id == _selectedRetreat?.id);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(retreats.length, (index) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          height: 8,
+          width: index == selectedIndex ? 24 : 8,
+          decoration: BoxDecoration(
+            color: index == selectedIndex
+                ? gradientColor2
+                : Colors.grey.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        );
+      }),
     );
   }
 
