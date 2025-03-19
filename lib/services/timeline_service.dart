@@ -8,6 +8,7 @@ import 'package:path/path.dart' as path;
 
 class TimelineService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // -------------------------
   // Post-Related Methods
@@ -59,7 +60,7 @@ class TimelineService {
       'createdAt': Timestamp.now(),
       'likesCount': 0,
       'commentsCount': 0,
-      'likes': [], // Initialize likes as empty array
+      'likes': [],
     });
   }
 
@@ -69,24 +70,85 @@ class TimelineService {
     return Post.fromDocument(doc, currentUserId: currentUserId);
   }
 
-  /// Delete a post
+  /// Delete a post and its associated image
   Future<void> deletePost(String postId) async {
-    DocumentReference postRef = _firestore.collection('posts').doc(postId);
+    try {
+      DocumentReference postRef = _firestore.collection('posts').doc(postId);
 
-    // Delete the post document and its comments
-    WriteBatch batch = _firestore.batch();
+      // Get the post data to check for image
+      DocumentSnapshot postSnapshot = await postRef.get();
+      Map<String, dynamic>? postData = postSnapshot.data() as Map<String, dynamic>?;
 
-    // Delete all comments associated with this post
-    QuerySnapshot commentsSnapshot = await postRef.collection('comments').get();
-    for (QueryDocumentSnapshot commentDoc in commentsSnapshot.docs) {
-      batch.delete(commentDoc.reference);
+      // Get all comments to check for images
+      QuerySnapshot commentsSnapshot = await postRef.collection('comments').get();
+
+      // Start a batch write
+      WriteBatch batch = _firestore.batch();
+
+      // Delete all comments and their images
+      for (QueryDocumentSnapshot commentDoc in commentsSnapshot.docs) {
+        Map<String, dynamic> commentData = commentDoc.data() as Map<String, dynamic>;
+
+        // Delete comment image if it exists
+        if (commentData['imageUrl'] != null && commentData['imageUrl'].toString().isNotEmpty) {
+          try {
+            // Convert the image URL to a storage reference and delete
+            await _deleteImageFromStorage(commentData['imageUrl']);
+          } catch (e) {
+            print('Error deleting comment image: $e');
+            // Continue with the deletion process even if image deletion fails
+          }
+        }
+
+        // Add comment deletion to batch
+        batch.delete(commentDoc.reference);
+      }
+
+      // Delete post image if it exists
+      if (postData != null && postData['imageUrl'] != null && postData['imageUrl'].toString().isNotEmpty) {
+        try {
+          await _deleteImageFromStorage(postData['imageUrl']);
+        } catch (e) {
+          print('Error deleting post image: $e');
+          // Continue with post deletion even if image deletion fails
+        }
+      }
+
+      // Add post deletion to batch
+      batch.delete(postRef);
+
+      // Commit all deletions
+      await batch.commit();
+
+    } catch (e) {
+      print('Error in deletePost: $e');
+      throw e;
     }
+  }
 
-    // Delete the post itself
-    batch.delete(postRef);
+  /// Helper method to delete an image from Firebase Storage
+  Future<void> _deleteImageFromStorage(String imageUrl) async {
+    try {
+      // Extract the path from the URL
+      // Firebase Storage URLs typically look like:
+      // https://firebasestorage.googleapis.com/v0/b/[bucket]/o/[path]?alt=media&token=[token]
 
-    // Commit the batch delete
-    await batch.commit();
+      // Parse the URL to get the storage path
+      Uri uri = Uri.parse(imageUrl);
+      String path = Uri.decodeComponent(uri.path);
+
+      // The path format is typically /v0/b/[bucket]/o/[encoded_file_path]
+      // We need the part after '/o/'
+      int startIndex = path.indexOf('/o/') + 3;
+      String storagePath = path.substring(startIndex);
+
+      // Create a reference to the file and delete it
+      await _storage.ref().child(storagePath).delete();
+      print('Successfully deleted image from storage: $storagePath');
+    } catch (e) {
+      print('Error parsing or deleting image: $e');
+      throw e;
+    }
   }
 
   // -------------------------
@@ -135,7 +197,7 @@ class TimelineService {
           id: doc.id,
           userId: data['userId'] ?? '',
           content: data['content'] ?? '',
-          imageUrl: data['imageUrl'], // Add this line to get the image URL
+          imageUrl: data['imageUrl'],
           likesCount: data['likesCount'] ?? 0,
           isLiked: likes.contains(currentUserId),
           createdAt: data['createdAt'] ?? Timestamp.now(),
@@ -144,11 +206,9 @@ class TimelineService {
     });
   }
 
-  // Add this method to upload comment images
+
   Future<String?> uploadCommentImage(File imageFile, String postId) async {
     try {
-      // Compress the image first if you have a compression function
-      // File compressedImage = await compressImage(imageFile);
 
       // Create a unique filename with timestamp
       final fileName = 'comment_${DateTime.now().millisecondsSinceEpoch}${path.extension(imageFile.path)}';
@@ -168,17 +228,37 @@ class TimelineService {
     }
   }
 
+  /// Delete a comment and its associated image
   Future<void> deleteComment(String postId, String commentId) async {
     try {
-      // Start a transaction to ensure both operations complete together
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        // Delete the comment
-        DocumentReference commentRef = _firestore
-            .collection('posts')
-            .doc(postId)
-            .collection('comments')
-            .doc(commentId);
+      // Reference to the comment
+      DocumentReference commentRef = _firestore
+          .collection('posts')
+          .doc(postId)
+          .collection('comments')
+          .doc(commentId);
 
+      // Get the comment data to check for image
+      DocumentSnapshot commentSnapshot = await commentRef.get();
+      if (!commentSnapshot.exists) {
+        throw Exception('Comment not found');
+      }
+
+      Map<String, dynamic> commentData = commentSnapshot.data() as Map<String, dynamic>;
+
+      // Start a transaction to ensure both operations complete together
+      await _firestore.runTransaction((transaction) async {
+        // Delete the comment image if it exists
+        if (commentData['imageUrl'] != null && commentData['imageUrl'].toString().isNotEmpty) {
+          try {
+            await _deleteImageFromStorage(commentData['imageUrl']);
+          } catch (e) {
+            print('Error deleting comment image: $e');
+            // Continue with comment deletion even if image deletion fails
+          }
+        }
+
+        // Delete the comment from Firestore
         transaction.delete(commentRef);
 
         // Update the post's comment count
@@ -187,6 +267,7 @@ class TimelineService {
           'commentsCount': FieldValue.increment(-1)
         });
       });
+
     } catch (e) {
       print('Error deleting comment: $e');
       throw Exception('Error deleting comment: $e');
@@ -195,7 +276,6 @@ class TimelineService {
 
 
   /// Toggle like status on a comment
-  /// Toggle like status on a comment - with improved error handling
   Future<void> toggleLikeOnComment(
       String postId, String commentId, String currentUserId) async {
     DocumentReference commentRef = _firestore
