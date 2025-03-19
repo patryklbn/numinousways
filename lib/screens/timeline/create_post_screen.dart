@@ -24,7 +24,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
   bool _isSubmitting = false;
   final ImagePicker _picker = ImagePicker();
-  final int _maxCharacters = 280;
+  final int _maxCharacters = 800;
   final ValueNotifier<int> _characterCount = ValueNotifier<int>(0);
 
   @override

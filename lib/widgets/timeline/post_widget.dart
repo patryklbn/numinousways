@@ -10,7 +10,9 @@ import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/login_provider.dart';
-import '../../utils/anonymized_user_helper.dart';  // Import the helper
+import '../../utils/anonymized_user_helper.dart';
+import '../../services/reporting_service.dart';  // Import the reporting service
+import 'report_content_dialog.dart';  // Import the report dialog
 
 class PostWidget extends StatefulWidget {
   final Post post;
@@ -200,6 +202,33 @@ class _PostWidgetState extends State<PostWidget> {
     }
   }
 
+  // New method for reporting posts
+  void _showReportDialog(BuildContext context, String postId, String reportedUserId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return ReportContentDialog(
+          contentId: postId,
+          contentType: 'post',
+          reportedUserId: reportedUserId,
+        );
+      },
+    ).then((reported) {
+      if (reported == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Thank you for your report. We\'ll review this content.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Color(0xFF6A0DAD),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10)),
+            ),
+          ),
+        );
+      }
+    });
+  }
+
   void _navigateToCommentsScreen(BuildContext context, String postId, {bool showFullPost = true}) {
     if (widget.isCommentsScreenOpen.value) return;
 
@@ -329,28 +358,40 @@ class _PostWidgetState extends State<PostWidget> {
               timeago.format(post.createdAt.toDate()),
               style: const TextStyle(color: Colors.grey, fontSize: 14),
             ),
-            trailing: currentUserId == post.userId
-                ? PopupMenuButton<String>(
+            trailing: PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
               onSelected: (String value) {
-                if (value == 'delete') {
+                if (value == 'delete' && currentUserId == post.userId) {
                   _deletePost(context, post.id);
+                } else if (value == 'report' && currentUserId != null) {
+                  _showReportDialog(context, post.id, post.userId);
                 }
               },
               itemBuilder: (BuildContext context) => [
-                const PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Delete Post'),
-                    ],
+                if (currentUserId == post.userId)
+                  const PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Delete Post'),
+                      ],
+                    ),
                   ),
-                ),
+                if (currentUserId != null && currentUserId != post.userId)
+                  const PopupMenuItem<String>(
+                    value: 'report',
+                    child: Row(
+                      children: [
+                        Icon(Icons.flag, color: Colors.orange),
+                        SizedBox(width: 8),
+                        Text('Report Post'),
+                      ],
+                    ),
+                  ),
               ],
-            )
-                : null,
+            ),
           ),
 
           // Post content and image - always tappable

@@ -14,19 +14,26 @@ class FacilitatorProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Safely handle null description and replace literal \n with actual newlines
-    final description = (facilitator.description ?? '').replaceAll('\\n', '\n');
+    // Improved text processing
+    // 1. Replace literal \n with actual newlines
+    // 2. Trim each paragraph to remove extra spaces
+    // 3. Handle any potential double spaces within paragraphs
+    String processedDescription = (facilitator.description ?? '').replaceAll('\\n', '\n');
 
-    // Split the description into paragraphs
-    final paragraphs = description.split('\n\n');
+    // Split into paragraphs and process each one
+    final List<String> paragraphs = processedDescription
+        .split('\n\n')
+        .map((paragraph) => paragraph.trim().replaceAll(RegExp(r'\s{2,}'), ' '))
+        .toList();
 
     return Scaffold(
-      // Static AppBar Color
+      // AppBar with centered title for both iOS and Android
       appBar: AppBar(
         title: Text(
           facilitator.name,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        centerTitle: true, // This forces the title to be centered on all platforms
         backgroundColor: Color(0xFF1A192E), // Static color #1a192e
         elevation: 2,
       ),
@@ -45,28 +52,29 @@ class FacilitatorProfileScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 children: [
-                  // Facilitator Image
+                  // Facilitator Image with enhanced shadow
                   Hero(
                     tag: facilitator.photoUrl, // Unique tag
-                    child: CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.white,
-                      backgroundImage: CachedNetworkImageProvider(facilitator.photoUrl),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 8,
-                              offset: Offset(0, 4),
-                            ),
-                          ],
-                        ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                            offset: Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: CircleAvatar(
+                        radius: 70, // Slightly larger
+                        backgroundColor: Colors.white,
+                        backgroundImage: CachedNetworkImageProvider(facilitator.photoUrl),
                       ),
                     ),
                   ),
-                  SizedBox(height: 16),
+                  SizedBox(height: 24), // Increased spacing
 
                   // Facilitator Name
                   Text(
@@ -82,26 +90,39 @@ class FacilitatorProfileScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
 
-                  // Facilitator Role
-                  Text(
-                    facilitator.role,
-                    style: GoogleFonts.lato(
-                      textStyle: TextStyle(
-                        fontSize: 18,
-                        color: Colors.grey[700],
-                        fontStyle: FontStyle.italic,
+                  // Facilitator Role with subtle divider
+                  Column(
+                    children: [
+                      Text(
+                        facilitator.role,
+                        style: GoogleFonts.lato(
+                          textStyle: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[700],
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    ),
-                    textAlign: TextAlign.center,
+                      SizedBox(height: 16),
+                      Container(
+                        width: 50,
+                        height: 3,
+                        decoration: BoxDecoration(
+                          color: Color(0xFF1A192E).withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 24),
+                  SizedBox(height: 28), // Increased spacing
 
-                  // Facilitator Description (Paragraphs)
+                  // Facilitator Description (Paragraphs) - Improved styling
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: paragraphs.map((paragraph) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
+                        padding: const EdgeInsets.only(bottom: 20.0), // Increased bottom padding
                         child: Text(
                           paragraph,
                           textAlign: TextAlign.justify,
@@ -109,13 +130,17 @@ class FacilitatorProfileScreen extends StatelessWidget {
                             textStyle: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[800],
-                              height: 1.6, // Line height
+                              height: 1.5, // Slightly adjusted line height
+                              letterSpacing: 0.2, // Slight letter spacing for readability
+                              wordSpacing: 0.5, // Improved word spacing
                             ),
                           ),
                         ),
                       );
                     }).toList(),
                   ),
+                  // Added some bottom padding for better scrolling experience
+                  SizedBox(height: 16),
                 ],
               ),
             ),

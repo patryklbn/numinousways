@@ -168,14 +168,14 @@ class _TimelineScreenState extends State<TimelineScreen> {
             backgroundColor: Colors.white,
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.only(bottom: 80), // Extra bottom padding for FAB
+              padding: const EdgeInsets.only(bottom: 80),
               itemCount: posts.length,
               itemBuilder: (context, index) {
                 return PostWidget(
                   post: posts[index],
                   isCommentsScreenOpen: isCommentsScreenOpen,
-                  truncateText: true, // Enable text truncation
-                  maxLines: 5, // Limit to 3 lines before truncating
+                  truncateText: true, // text truncation
+                  maxLines: 6, // Limit to 6 lines before truncate
                 );
               },
             ),
