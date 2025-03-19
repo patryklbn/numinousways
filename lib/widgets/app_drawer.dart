@@ -29,6 +29,18 @@ class _AppDrawerState extends State<AppDrawer> {
     });
   }
 
+  void _navigateToProfile(BuildContext context, String userId) {
+    Navigator.pop(context); // Close drawer
+    Navigator.pushNamed(
+      context,
+      '/profile_screen',
+      arguments: {
+        'userId': userId,
+        'loggedInUserId': userId,
+      },
+    );
+  }
+
   Future<void> _logout(BuildContext context) async {
     try {
       // Store context in a local variable to ensure it's captured properly
@@ -80,30 +92,37 @@ class _AppDrawerState extends State<AppDrawer> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Header
-            UserAccountsDrawerHeader(
-              accountName: isLoading
-                  ? const Text('Loading...')
-                  : Text(
-                userProfile?.name ?? 'User Name',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              accountEmail: Text(userEmail),
-              // Custom avatar handling
-              currentAccountPicture: CircleAvatar(
-                radius: 36, // Outer circle
-                backgroundColor: const Color(0xFFA785D3),
-                child: CircleAvatar(
-                  radius: 34, // Inner circle where the image or default icon goes
-                  backgroundColor: Colors.grey[200],
-                  child: _buildAvatarChild(userProfile?.profileImageUrl),
+            // Header - now wrapped with InkWell to make it tappable
+            InkWell(
+              onTap: () {
+                if (loggedInUserId.isNotEmpty) {
+                  _navigateToProfile(context, loggedInUserId);
+                }
+              },
+              child: UserAccountsDrawerHeader(
+                accountName: isLoading
+                    ? const Text('Loading...')
+                    : Text(
+                  userProfile?.name ?? 'User Name',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-              ),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                accountEmail: Text(userEmail),
+                // Custom avatar handling
+                currentAccountPicture: CircleAvatar(
+                  radius: 36, // Outer circle
+                  backgroundColor: const Color(0xFFA785D3),
+                  child: CircleAvatar(
+                    radius: 34, // Inner circle where the image or default icon goes
+                    backgroundColor: Colors.grey[200],
+                    child: _buildAvatarChild(userProfile?.profileImageUrl),
+                  ),
+                ),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
               ),
             ),
