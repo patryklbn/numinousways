@@ -18,8 +18,8 @@ class ProfileService {
     img.Image? image = img.decodeImage(bytes);
     if (image == null) return file;
 
-    img.Image resizedImage = img.copyResize(image, width: 150, height: 150);
-    final compressedBytes = img.encodeJpg(resizedImage, quality: 80);
+    img.Image resizedImage = img.copyResize(image, width: 300, height: 300);
+    final compressedBytes = img.encodeJpg(resizedImage, quality: 95);
 
     final tempDir = await getTemporaryDirectory();
     final compressedFile = File('${tempDir.path}/compressed_profile_pic.jpg');

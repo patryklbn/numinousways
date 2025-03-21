@@ -3,8 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../utils/dialog_helper.dart';
 import '../../utils/validators.dart';
-import 'package:provider/provider.dart'; // Add this import for Provider
-import '../../services/login_provider.dart'; // Import your LoginProvider
+import 'package:provider/provider.dart';
+import '../../services/login_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -55,13 +55,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      // Save the user's name and other profile info to Firestore
-      await FirebaseFirestore.instance.collection('users').doc(loginProvider.userId).set({
+      // Get the user ID after successful registration
+      final userId = loginProvider.userId;
+      if (userId == null) {
+        throw Exception("Registration succeeded but no user ID was provided");
+      }
+
+      // Save the user's information to Firestore with a standardised structure
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+        'id': userId, // Always include the user ID in the document
         'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
         'emailVerified': false,
+        'bio': '',
+        'location': '',
+        'gender': null,
+        'age': null,
+        'profileImageUrl': null,
       });
+
+      print('User created successfully with ID: $userId');
+      print('User document created with standardized fields');
 
       if (mounted) {
         setState(() {
@@ -84,6 +99,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }
     } catch (e) {
       // Handle errors
+      print('Error during registration: ${e.toString()}');
+
       if (mounted) {
         setState(() {
           _isLoading = false;

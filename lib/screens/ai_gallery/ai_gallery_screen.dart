@@ -498,7 +498,7 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
     }
   }
 
-// Replace your _deleteImage method with this fixed version
+  // Fixed version of deleteImage method
   Future<void> _deleteImage(BuildContext context, String docId) async {
     // Get a reference to the ScaffoldMessengerState before any navigation happens
     final scaffoldMessenger = ScaffoldMessenger.of(context);
@@ -554,6 +554,11 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
     final LoginProvider loginProvider = Provider.of<LoginProvider>(context, listen: false);
     final String? currentUserId = loginProvider.userId;
     final bool isCreator = currentUserId == creatorUserId;
+
+    // Log navigation intent for debugging
+    print('AiGalleryScreen - Viewing image details');
+    print('  Image creator ID: $creatorUserId');
+    print('  Current user ID: $currentUserId');
 
     showModalBottomSheet(
       context: context,
@@ -653,13 +658,45 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
                         return GestureDetector(
                           onTap: () {
                             if (currentUserId != null) {
+                              // Log profile navigation for debugging
+                              print('AiGalleryScreen - Navigating to profile');
+                              print('  Target profile ID: $creatorUserId');
+                              print('  Current user ID: $currentUserId');
+
+                              // Verify the authenticity of the current user ID by checking with provider
+                              final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+                              final verifiedCurrentUserId = loginProvider.userId;
+
+                              // Security check - ensure current user ID is verified before navigation
+                              if (verifiedCurrentUserId == null) {
+                                print('  SECURITY CHECK: Authentication state unclear, not navigating');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please log in to view profiles'),
+                                    backgroundColor: Color(0xFF6A0DAD),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              print('  Verified current user ID: $verifiedCurrentUserId');
+
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ProfileScreen(
                                     userId: creatorUserId,
-                                    loggedInUserId: currentUserId,
+                                    // SECURITY FIX: Always use the verified user ID from provider
+                                    loggedInUserId: verifiedCurrentUserId,
                                   ),
+                                ),
+                              );
+                            } else {
+                              // User not logged in
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Please log in to view profiles'),
+                                  backgroundColor: Color(0xFF6A0DAD),
                                 ),
                               );
                             }

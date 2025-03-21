@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/login_provider.dart';
 import '../viewmodels/profile_viewmodel.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -13,20 +14,63 @@ class AppDrawer extends StatefulWidget {
 }
 
 class _AppDrawerState extends State<AppDrawer> {
-  late ProfileViewModel profileViewModel;
+  String? _userDisplayName;
+  String? _userProfileUrl;
+  String? _userEmail;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final loginProvider = Provider.of<LoginProvider>(context, listen: false);
-      profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
-      if (loginProvider.isLoggedIn) {
-        final profileVM = Provider.of<ProfileViewModel>(context, listen: false);
-        // This will use cached data if available, or fetch from Firestore if not
-        profileVM.fetchUserProfile(loginProvider.userId!);
-      }
+      _fetchCurrentUserDetails();
     });
+  }
+
+  // fetch user details for the drawer without affecting ProfileViewModel
+  Future<void> _fetchCurrentUserDetails() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+    if (loginProvider.isLoggedIn && loginProvider.userId != null) {
+      try {
+        // Get user email from Firebase Auth
+        _userEmail = FirebaseAuth.instance.currentUser?.email;
+
+        // Get user profile details directly from Firestore
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(loginProvider.userId)
+            .get();
+
+        if (doc.exists) {
+          setState(() {
+            _userDisplayName = doc.data()?['name'] ?? 'User Name';
+            _userProfileUrl = doc.data()?['profileImageUrl'];
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _userDisplayName = 'User Name';
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        print('Error loading user details for drawer: $e');
+        setState(() {
+          _userDisplayName = 'User Name';
+          _isLoading = false;
+        });
+      }
+    } else {
+      setState(() {
+        _userDisplayName = 'User Name';
+        _userEmail = 'user@example.com';
+        _isLoading = false;
+      });
+    }
   }
 
   void _navigateToProfile(BuildContext context, String userId) {
@@ -43,7 +87,6 @@ class _AppDrawerState extends State<AppDrawer> {
 
   Future<void> _logout(BuildContext context) async {
     try {
-      // Store context in a local variable to ensure it's captured properly
       final BuildContext capturedContext = context;
 
       // Get login provider
@@ -56,14 +99,13 @@ class _AppDrawerState extends State<AppDrawer> {
       if (!mounted) return;
 
       // Navigate to Onboarding Screen and clear navigation stack
-      // Use the captured context to ensure it's still valid
       Navigator.of(capturedContext).pushNamedAndRemoveUntil(
         '/onboarding',
             (Route<dynamic> route) => false,
       );
     } catch (e) {
       print('Error during logout: $e');
-      // If we're still mounted, show an error message
+      // If mounted, show an error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -78,13 +120,7 @@ class _AppDrawerState extends State<AppDrawer> {
   @override
   Widget build(BuildContext context) {
     final loginProvider = Provider.of<LoginProvider>(context);
-    final profileViewModel = Provider.of<ProfileViewModel>(context);
-
-    final bool isLoading = profileViewModel.isLoading;
-    final userProfile = profileViewModel.userProfile;
     final String loggedInUserId = loginProvider.userId ?? '';
-    final String userEmail =
-        FirebaseAuth.instance.currentUser?.email ?? 'user@example.com';
 
     return Drawer(
       child: Container(
@@ -92,7 +128,6 @@ class _AppDrawerState extends State<AppDrawer> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Header - now wrapped with InkWell to make it tappable
             InkWell(
               onTap: () {
                 if (loggedInUserId.isNotEmpty) {
@@ -100,13 +135,13 @@ class _AppDrawerState extends State<AppDrawer> {
                 }
               },
               child: UserAccountsDrawerHeader(
-                accountName: isLoading
+                accountName: _isLoading
                     ? const Text('Loading...')
                     : Text(
-                  userProfile?.name ?? 'User Name',
+                  _userDisplayName ?? 'User Name',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                accountEmail: Text(userEmail),
+                accountEmail: Text(_userEmail ?? 'user@example.com'),
                 // Custom avatar handling
                 currentAccountPicture: CircleAvatar(
                   radius: 36, // Outer circle
@@ -114,7 +149,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   child: CircleAvatar(
                     radius: 34, // Inner circle where the image or default icon goes
                     backgroundColor: Colors.grey[200],
-                    child: _buildAvatarChild(userProfile?.profileImageUrl),
+                    child: _buildAvatarChild(_userProfileUrl),
                   ),
                 ),
                 decoration: const BoxDecoration(
@@ -170,7 +205,7 @@ class _AppDrawerState extends State<AppDrawer> {
               },
             ),
             const Divider(), // Divider between menu items
-            // Privacy Policy - Added here between Profile and Logout
+            // Privacy Policy
             ListTile(
               leading: const Icon(Icons.privacy_tip),
               title: const Text('Privacy Policy'),
@@ -188,7 +223,6 @@ class _AppDrawerState extends State<AppDrawer> {
                   _logout(context);
                 } catch (e) {
                   print('Error during logout: $e');
-                  // Just ignore any errors here
                 }
               },
             ),
@@ -198,9 +232,7 @@ class _AppDrawerState extends State<AppDrawer> {
     );
   }
 
-  /// Returns either a NetworkImage (with error fallback) or a built-in icon if there's no image.
   Widget _buildAvatarChild(String? profileImageUrl) {
-    // If we have a valid profile image URL, attempt to load it
     if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
       return ClipOval(
         child: Image.network(
