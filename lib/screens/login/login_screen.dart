@@ -75,7 +75,7 @@ class _LoginScreenState extends State<LoginScreen> {
           );
         }
       } else {
-        // Email not verified - ENFORCE verification requirement
+        // Email not verified enforce verification requirement
         if (mounted) {
           setState(() => _isLoading = false);
           // Show verification dialog
@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
         print("Google login successful - User ID: ${user.uid}");
         print("Email: ${user.email}");
 
-        // SECURITY FIX: Navigate without passing user IDs
+        // FIx: Navigate without passing user IDs
         Navigator.pushReplacementNamed(
           context,
           '/timeline',
@@ -357,7 +357,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24.0),
 
-                    // -------- LOGIN BUTTON --------
+                    // LOGIN BUTTON
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -406,7 +406,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 24.0),
 
-                    // -------- GOOGLE LOGIN BUTTON (ICON) --------
+                    //  GOOGLE LOGIN BUTTON
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -425,7 +425,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
 
-          // ------- BOTTOM SECTION -------
+          // BOTTOM SECTION
           Padding(
             padding: const EdgeInsets.only(bottom: 24.0),
             child: Center(

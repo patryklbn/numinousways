@@ -14,7 +14,6 @@ class AppDrawer extends StatefulWidget {
 }
 
 class _AppDrawerState extends State<AppDrawer> {
-  // Local state for drawer user info to avoid mixing with profile screen
   String? _userDisplayName;
   String? _userProfileUrl;
   String? _userEmail;
@@ -28,7 +27,7 @@ class _AppDrawerState extends State<AppDrawer> {
     });
   }
 
-  // Directly fetch user details for the drawer without affecting ProfileViewModel
+  // fetch user details for the drawer without affecting ProfileViewModel
   Future<void> _fetchCurrentUserDetails() async {
     setState(() {
       _isLoading = true;
@@ -88,7 +87,6 @@ class _AppDrawerState extends State<AppDrawer> {
 
   Future<void> _logout(BuildContext context) async {
     try {
-      // Store context in a local variable to ensure it's captured properly
       final BuildContext capturedContext = context;
 
       // Get login provider
@@ -101,14 +99,13 @@ class _AppDrawerState extends State<AppDrawer> {
       if (!mounted) return;
 
       // Navigate to Onboarding Screen and clear navigation stack
-      // Use the captured context to ensure it's still valid
       Navigator.of(capturedContext).pushNamedAndRemoveUntil(
         '/onboarding',
             (Route<dynamic> route) => false,
       );
     } catch (e) {
       print('Error during logout: $e');
-      // If we're still mounted, show an error message
+      // If mounted, show an error message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -131,7 +128,6 @@ class _AppDrawerState extends State<AppDrawer> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            // Header - now wrapped with InkWell to make it tappable
             InkWell(
               onTap: () {
                 if (loggedInUserId.isNotEmpty) {
@@ -209,7 +205,7 @@ class _AppDrawerState extends State<AppDrawer> {
               },
             ),
             const Divider(), // Divider between menu items
-            // Privacy Policy - Added here between Profile and Logout
+            // Privacy Policy
             ListTile(
               leading: const Icon(Icons.privacy_tip),
               title: const Text('Privacy Policy'),
@@ -227,7 +223,6 @@ class _AppDrawerState extends State<AppDrawer> {
                   _logout(context);
                 } catch (e) {
                   print('Error during logout: $e');
-                  // Just ignore any errors here
                 }
               },
             ),
@@ -237,9 +232,7 @@ class _AppDrawerState extends State<AppDrawer> {
     );
   }
 
-  /// Returns either a NetworkImage (with error fallback) or a built-in icon if there's no image.
   Widget _buildAvatarChild(String? profileImageUrl) {
-    // If we have a valid profile image URL, attempt to load it
     if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
       return ClipOval(
         child: Image.network(

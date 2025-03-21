@@ -61,14 +61,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
         throw Exception("Registration succeeded but no user ID was provided");
       }
 
-      // Save the user's information to Firestore with a standardized structure
+      // Save the user's information to Firestore with a standardised structure
       await FirebaseFirestore.instance.collection('users').doc(userId).set({
         'id': userId, // Always include the user ID in the document
         'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
         'emailVerified': false,
-        // Add these standardized fields with default values
         'bio': '',
         'location': '',
         'gender': null,
@@ -76,7 +75,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'profileImageUrl': null,
       });
 
-      // Log successful user creation
       print('User created successfully with ID: $userId');
       print('User document created with standardized fields');
 

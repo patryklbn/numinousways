@@ -328,9 +328,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
-    // First, make sure the user is authenticated recently before proceeding
+    //  user is authenticated recently before proceeding
     final reauthed = await _showReauthenticationDialog();
-    if (!reauthed) return; // Exit if authentication failed or was cancelled
+    if (!reauthed) return;
 
     return showDialog<void>(
       context: context,
@@ -413,7 +413,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  // Handle account deletion - now happens after successful reauthentication
+  // Handle account deletion
   Future<void> _deleteAccount() async {
     setState(() {
       _isDeleting = true;
