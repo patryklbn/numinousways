@@ -23,6 +23,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isDeleting = false;
   bool _needsReauthentication = false;
+  bool _isAuthorized = false;
+  bool _isCheckingAuth = true;
 
   // Firebase URL for the default avatar
   final String defaultAvatarUrl = 'https://firebasestorage.googleapis.com/v0/b/numinousway.firebasestorage.app/o/profile_images%2Fdefault_avatar.png?alt=media&token=d6afd74a-433c-4713-b8fc-73ffaa18d49c';
@@ -30,7 +32,95 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Security check: verify the user is editing their own profile
+    _verifyAuthorization();
+  }
+
+  // Check if the user is authorized to edit this profile
+  Future<void> _verifyAuthorization() async {
+    setState(() {
+      _isCheckingAuth = true;
+    });
+
+    try {
+      final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+      final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+
+      // Get the current authenticated user ID
+      final currentAuthUserId = loginProvider.userId;
+
+      // Get the profile being edited
+      final profileUserId = profileViewModel.userProfile?.id;
+
+      // Log information for debugging
+      print('EditProfileScreen - Security Check');
+      print('  Auth User ID: $currentAuthUserId');
+      print('  Profile User ID: $profileUserId');
+
+      if (currentAuthUserId == null) {
+        print('  SECURITY VIOLATION: No authenticated user found');
+        _exitUnauthorized('You must be logged in to edit a profile');
+        return;
+      }
+
+      if (profileUserId == null) {
+        print('  SECURITY VIOLATION: No profile ID found');
+        _exitUnauthorized('Unable to determine profile ownership');
+        return;
+      }
+
+      if (currentAuthUserId != profileUserId) {
+        print('  SECURITY VIOLATION: Attempted to edit another user\'s profile');
+        print('    Auth User: $currentAuthUserId');
+        print('    Profile User: $profileUserId');
+        _exitUnauthorized('You can only edit your own profile');
+        return;
+      }
+
+      // User is authorized - proceed with loading the profile data
+      print('  Authorization successful - user is editing their own profile');
+      setState(() {
+        _isAuthorized = true;
+        _isCheckingAuth = false;
+      });
+
+      // Now load the profile data
+      _loadProfileData();
+
+    } catch (e) {
+      print('Error during authorization check: $e');
+      _exitUnauthorized('An error occurred while verifying your identity');
+    }
+  }
+
+  // Handle unauthorized access
+  void _exitUnauthorized(String message) {
+    setState(() {
+      _isAuthorized = false;
+      _isCheckingAuth = false;
+    });
+
+    // Exit the edit screen after showing a message
+    Future.microtask(() {
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Return to previous screen
+      Navigator.of(context).pop();
+    });
+  }
+
+  // Load profile data after authorization is confirmed
+  void _loadProfileData() {
     final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+
     _nameController = TextEditingController(text: profileViewModel.userProfile?.name ?? '');
     _locationController = TextEditingController(text: profileViewModel.userProfile?.location ?? '');
     _selectedGender = profileViewModel.userProfile?.gender;
@@ -74,13 +164,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
+    // Verify user is still authenticated
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+    final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+
+    if (loginProvider.userId == null || loginProvider.userId != profileViewModel.userProfile?.id) {
+      _exitUnauthorized('Your session has expired. Please log in again.');
+      return;
+    }
+
     final pickedFile = await _picker.pickImage(source: source);
     if (pickedFile != null) {
       setState(() {
         _selectedImage = File(pickedFile.path);
       });
 
-      final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
       await profileViewModel.uploadProfileImage(_selectedImage!, profileViewModel.userProfile!.id!);
     }
   }
@@ -112,7 +210,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-// Show reauthentication dialog with better error handling
+  // Show reauthentication dialog with better error handling
   Future<bool> _showReauthenticationDialog() async {
     _passwordController.clear();
     bool isAuthenticating = false;
@@ -219,8 +317,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return result ?? false;
   }
 
-// Show delete account confirmation dialog
+  // Show delete account confirmation dialog
   Future<void> _showDeleteAccountDialog() async {
+    // Verify user is still authenticated
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+    final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+
+    if (loginProvider.userId == null || loginProvider.userId != profileViewModel.userProfile?.id) {
+      _exitUnauthorized('Your session has expired. Please log in again.');
+      return;
+    }
+
     // First, make sure the user is authenticated recently before proceeding
     final reauthed = await _showReauthenticationDialog();
     if (!reauthed) return; // Exit if authentication failed or was cancelled
@@ -306,7 +413,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-// Handle account deletion - now happens after successful reauthentication
+  // Handle account deletion - now happens after successful reauthentication
   Future<void> _deleteAccount() async {
     setState(() {
       _isDeleting = true;
@@ -319,6 +426,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (profileViewModel.userProfile?.id != null) {
         final userId = profileViewModel.userProfile!.id!;
+
+        // Final security check before deletion
+        if (loginProvider.userId != userId) {
+          throw Exception('Security verification failed. User IDs do not match.');
+        }
 
         try {
           // Delete user data from all retreats
@@ -380,6 +492,103 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profileViewModel = Provider.of<ProfileViewModel>(context);
+
+    // Security check loading state
+    if (_isCheckingAuth) {
+      return Scaffold(
+        backgroundColor: Color(0xFFF5F5F5),
+        appBar: AppBar(
+          centerTitle: true,
+          title: Text('Edit Profile'),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Verifying account...',
+                style: TextStyle(
+                  color: Color(0xFF6A0DAD),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Not authorized - this should not display as we redirect in _exitUnauthorized,
+    // but it's here as a safeguard
+    if (!_isAuthorized) {
+      return Scaffold(
+        backgroundColor: Color(0xFFF5F5F5),
+        appBar: AppBar(
+          centerTitle: true,
+          title: Text('Access Denied'),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.red.shade700, Colors.red.shade900],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.security, color: Colors.red, size: 64),
+              SizedBox(height: 16),
+              Text(
+                'Unauthorized Access',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red[800],
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'You do not have permission to edit this profile.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.red[700],
+                ),
+              ),
+              SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red[700],
+                  foregroundColor: Colors.white,
+                ),
+                child: Text('Return to previous screen'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Color(0xFFF5F5F5),
@@ -579,8 +788,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               // Save button
               ElevatedButton(
                 onPressed: () async {
+                  // Reverify authentication before saving changes
+                  final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+                  final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+
+                  if (loginProvider.userId == null ||
+                      loginProvider.userId != profileViewModel.userProfile?.id) {
+                    _exitUnauthorized('Session expired. Please log in again.');
+                    return;
+                  }
+
                   if (_formKey.currentState!.validate()) {
-                    final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
                     await profileViewModel.updateUserProfile(
                       _nameController.text.trim(),
                       profileViewModel.userProfile?.bio ?? '',

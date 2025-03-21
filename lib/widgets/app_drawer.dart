@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/login_provider.dart';
 import '../viewmodels/profile_viewmodel.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -13,20 +14,64 @@ class AppDrawer extends StatefulWidget {
 }
 
 class _AppDrawerState extends State<AppDrawer> {
-  late ProfileViewModel profileViewModel;
+  // Local state for drawer user info to avoid mixing with profile screen
+  String? _userDisplayName;
+  String? _userProfileUrl;
+  String? _userEmail;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final loginProvider = Provider.of<LoginProvider>(context, listen: false);
-      profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
-      if (loginProvider.isLoggedIn) {
-        final profileVM = Provider.of<ProfileViewModel>(context, listen: false);
-        // This will use cached data if available, or fetch from Firestore if not
-        profileVM.fetchUserProfile(loginProvider.userId!);
-      }
+      _fetchCurrentUserDetails();
     });
+  }
+
+  // Directly fetch user details for the drawer without affecting ProfileViewModel
+  Future<void> _fetchCurrentUserDetails() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+    if (loginProvider.isLoggedIn && loginProvider.userId != null) {
+      try {
+        // Get user email from Firebase Auth
+        _userEmail = FirebaseAuth.instance.currentUser?.email;
+
+        // Get user profile details directly from Firestore
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(loginProvider.userId)
+            .get();
+
+        if (doc.exists) {
+          setState(() {
+            _userDisplayName = doc.data()?['name'] ?? 'User Name';
+            _userProfileUrl = doc.data()?['profileImageUrl'];
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _userDisplayName = 'User Name';
+            _isLoading = false;
+          });
+        }
+      } catch (e) {
+        print('Error loading user details for drawer: $e');
+        setState(() {
+          _userDisplayName = 'User Name';
+          _isLoading = false;
+        });
+      }
+    } else {
+      setState(() {
+        _userDisplayName = 'User Name';
+        _userEmail = 'user@example.com';
+        _isLoading = false;
+      });
+    }
   }
 
   void _navigateToProfile(BuildContext context, String userId) {
@@ -78,13 +123,7 @@ class _AppDrawerState extends State<AppDrawer> {
   @override
   Widget build(BuildContext context) {
     final loginProvider = Provider.of<LoginProvider>(context);
-    final profileViewModel = Provider.of<ProfileViewModel>(context);
-
-    final bool isLoading = profileViewModel.isLoading;
-    final userProfile = profileViewModel.userProfile;
     final String loggedInUserId = loginProvider.userId ?? '';
-    final String userEmail =
-        FirebaseAuth.instance.currentUser?.email ?? 'user@example.com';
 
     return Drawer(
       child: Container(
@@ -100,13 +139,13 @@ class _AppDrawerState extends State<AppDrawer> {
                 }
               },
               child: UserAccountsDrawerHeader(
-                accountName: isLoading
+                accountName: _isLoading
                     ? const Text('Loading...')
                     : Text(
-                  userProfile?.name ?? 'User Name',
+                  _userDisplayName ?? 'User Name',
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                accountEmail: Text(userEmail),
+                accountEmail: Text(_userEmail ?? 'user@example.com'),
                 // Custom avatar handling
                 currentAccountPicture: CircleAvatar(
                   radius: 36, // Outer circle
@@ -114,7 +153,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   child: CircleAvatar(
                     radius: 34, // Inner circle where the image or default icon goes
                     backgroundColor: Colors.grey[200],
-                    child: _buildAvatarChild(userProfile?.profileImageUrl),
+                    child: _buildAvatarChild(_userProfileUrl),
                   ),
                 ),
                 decoration: const BoxDecoration(

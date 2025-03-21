@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../../services/login_provider.dart';
 import '../../utils/dialog_helper.dart';
 import '../../utils/validators.dart';
 
@@ -57,13 +59,19 @@ class _LoginScreenState extends State<LoginScreen> {
         // Email is verified, proceed to the main app
         if (mounted) {
           setState(() => _isLoading = false);
+
+          // SECURITY FIX: Update LoginProvider to ensure consistency
+          final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+
+          // Log authentication state for debugging
+          print("Login successful - User ID: ${refreshedUser.uid}");
+          print("Email: ${refreshedUser.email}");
+
+          // Navigate to timeline without passing user IDs in arguments
+          // The app will use LoginProvider to get the authenticated user
           Navigator.pushReplacementNamed(
             context,
             '/timeline',
-            arguments: {
-              'userId': refreshedUser.uid,
-              'loggedInUserId': refreshedUser.uid,
-            },
           );
         }
       } else {
@@ -102,13 +110,15 @@ class _LoginScreenState extends State<LoginScreen> {
       // Google accounts are typically already verified
       if (mounted) {
         setState(() => _isLoading = false);
+
+        // Log authentication state for debugging
+        print("Google login successful - User ID: ${user.uid}");
+        print("Email: ${user.email}");
+
+        // SECURITY FIX: Navigate without passing user IDs
         Navigator.pushReplacementNamed(
           context,
           '/timeline',
-          arguments: {
-            'userId': user.uid,
-            'loggedInUserId': user.uid,
-          },
         );
       }
     } catch (e) {
@@ -174,7 +184,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 foregroundColor: Colors.white,
               ),
               child: const Text('Resend Verification Email'),
-
             ),
           ],
         );
