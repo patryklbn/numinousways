@@ -8,6 +8,8 @@ import '../../services/retreat_service.dart';
 import '../../services/login_provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
+  const EditProfileScreen({Key? key}) : super(key: key);
+
   @override
   _EditProfileScreenState createState() => _EditProfileScreenState();
 }
@@ -25,6 +27,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _needsReauthentication = false;
   bool _isAuthorized = false;
   bool _isCheckingAuth = true;
+  bool _isLoadingProfile = true;
 
   // Firebase URL for the default avatar
   final String defaultAvatarUrl = 'https://firebasestorage.googleapis.com/v0/b/numinousway.firebasestorage.app/o/profile_images%2Fdefault_avatar.png?alt=media&token=d6afd74a-433c-4713-b8fc-73ffaa18d49c';
@@ -33,7 +36,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void initState() {
     super.initState();
 
-    // Security check: verify the user is editing their own profile
+    // Initialize the controllers here to avoid LateInitializationError
+    _nameController = TextEditingController();
+    _locationController = TextEditingController();
+
+    // Security check verify the user is editing their own profile
     _verifyAuthorization();
   }
 
@@ -49,37 +56,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // Get the current authenticated user ID
       final currentAuthUserId = loginProvider.userId;
-
-      // Get the profile being edited
-      final profileUserId = profileViewModel.userProfile?.id;
-
-      // Log information for debugging
-      print('EditProfileScreen - Security Check');
-      print('  Auth User ID: $currentAuthUserId');
-      print('  Profile User ID: $profileUserId');
+      print('EditProfileScreen - Auth User ID: $currentAuthUserId');
 
       if (currentAuthUserId == null) {
-        print('  SECURITY VIOLATION: No authenticated user found');
+        print('SECURITY VIOLATION: No authenticated user found');
         _exitUnauthorized('You must be logged in to edit a profile');
         return;
       }
 
+      //  load the profile for the current logged in user
+      await profileViewModel.forceRefreshProfile(currentAuthUserId);
+
+
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // check if we have a profile
+      final profileUserId = profileViewModel.userProfile?.id;
+
+      print('EditProfileScreen - Profile User ID: $profileUserId');
+      print('EditProfileScreen - Profile Status: ${profileViewModel.getProfileStatus()}');
+
       if (profileUserId == null) {
-        print('  SECURITY VIOLATION: No profile ID found');
+        print('SECURITY VIOLATION: No profile ID found after fetching');
         _exitUnauthorized('Unable to determine profile ownership');
         return;
       }
 
       if (currentAuthUserId != profileUserId) {
-        print('  SECURITY VIOLATION: Attempted to edit another user\'s profile');
-        print('    Auth User: $currentAuthUserId');
-        print('    Profile User: $profileUserId');
+        print('SECURITY VIOLATION: Attempted to edit another user\'s profile');
+        print('Auth User: $currentAuthUserId');
+        print('Profile User: $profileUserId');
         _exitUnauthorized('You can only edit your own profile');
         return;
       }
 
       // User is authorized - proceed with loading the profile data
-      print('  Authorization successful - user is editing their own profile');
+      print('Authorization successful - user is editing their own profile');
       setState(() {
         _isAuthorized = true;
         _isCheckingAuth = false;
@@ -108,7 +120,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         SnackBar(
           content: Text(message),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
         ),
       );
 
@@ -119,18 +131,36 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   // Load profile data after authorization is confirmed
   void _loadProfileData() {
-    final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+    setState(() {
+      _isLoadingProfile = true;
+    });
 
-    _nameController = TextEditingController(text: profileViewModel.userProfile?.name ?? '');
-    _locationController = TextEditingController(text: profileViewModel.userProfile?.location ?? '');
-    _selectedGender = profileViewModel.userProfile?.gender;
-    if (profileViewModel.userProfile?.age != null) {
-      _selectedDate = DateTime.tryParse(profileViewModel.userProfile!.age!);
+    final profileViewModel = Provider.of<ProfileViewModel>(context, listen: false);
+    final userProfile = profileViewModel.userProfile;
+
+    print('Loading profile data:');
+    print('  UserProfile: ${userProfile != null ? 'exists' : 'null'}');
+    if (userProfile != null) {
+      print('  ID: ${userProfile.id}');
+      print('  Name: ${userProfile.name}');
     }
+
+    // Set values to controllers after they've been initialized
+    _nameController.text = userProfile?.name ?? '';
+    _locationController.text = userProfile?.location ?? '';
+    _selectedGender = userProfile?.gender;
+    if (userProfile?.age != null) {
+      _selectedDate = DateTime.tryParse(userProfile!.age!);
+    }
+
+    setState(() {
+      _isLoadingProfile = false;
+    });
   }
 
   @override
   void dispose() {
+    // dispose of controllers
     _nameController.dispose();
     _locationController.dispose();
     _passwordController.dispose();
@@ -146,8 +176,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         builder: (context, child) {
           return Theme(
             data: Theme.of(context).copyWith(
-              colorScheme: ColorScheme.light(
-                primary: const Color(0xFF6A0DAD),
+              colorScheme: const ColorScheme.light(
+                primary: Color(0xFF6A0DAD),
                 onPrimary: Colors.white,
                 onSurface: Colors.black,
               ),
@@ -179,7 +209,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _selectedImage = File(pickedFile.path);
       });
 
-      await profileViewModel.uploadProfileImage(_selectedImage!, profileViewModel.userProfile!.id!);
+      await profileViewModel.uploadProfileImage(_selectedImage!, loginProvider.userId!);
     }
   }
 
@@ -190,16 +220,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           ListTile(
-            leading: Icon(Icons.camera_alt, color: const Color(0xFF6A0DAD)),
-            title: Text('Take a Photo'),
+            leading: const Icon(Icons.camera_alt, color: Color(0xFF6A0DAD)),
+            title: const Text('Take a Photo'),
             onTap: () {
               Navigator.pop(context);
               _pickImage(ImageSource.camera);
             },
           ),
           ListTile(
-            leading: Icon(Icons.photo_library, color: const Color(0xFF6A0DAD)),
-            title: Text('Choose from Gallery'),
+            leading: const Icon(Icons.photo_library, color: Color(0xFF6A0DAD)),
+            title: const Text('Choose from Gallery'),
             onTap: () {
               Navigator.pop(context);
               _pickImage(ImageSource.gallery);
@@ -234,11 +264,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
+                      const Text(
                         'For your security, please confirm your password before deleting your account.',
                         style: TextStyle(fontWeight: FontWeight.w500),
                       ),
-                      SizedBox(height: 16),
+                      const SizedBox(height: 16),
                       TextField(
                         controller: _passwordController,
                         decoration: InputDecoration(
@@ -248,7 +278,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: Color(0xFF6A0DAD)),
+                            borderSide: const BorderSide(color: Color(0xFF6A0DAD)),
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
@@ -347,17 +377,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           content: SingleChildScrollView(
             child: ListBody(
               children: <Widget>[
-                Text(
+                const Text(
                   'Are you sure you want to delete your account?',
                   style: TextStyle(fontWeight: FontWeight.w500),
                 ),
-                SizedBox(height: 8),
-                Text(
+                const SizedBox(height: 8),
+                const Text(
                   'This action cannot be undone. All your personal data, travel details, retreat information, and photos will be permanently deleted.',
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Container(
-                  padding: EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: Colors.red[50],
                     borderRadius: BorderRadius.circular(8),
@@ -391,10 +421,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.red),
                 ),
               )
-                  : Text(
+                  : const Text(
                 'Delete',
                 style: TextStyle(color: Colors.red),
               ),
@@ -453,7 +483,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             // Show confirmation snackbar
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Your account has been deleted'),
+                content: const Text('Your account has been deleted'),
                 backgroundColor: Colors.red[700],
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -496,12 +526,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     // Security check loading state
     if (_isCheckingAuth) {
       return Scaffold(
-        backgroundColor: Color(0xFFF5F5F5),
+        backgroundColor: const Color(0xFFF5F5F5),
         appBar: AppBar(
           centerTitle: true,
-          title: Text('Edit Profile'),
+          title: const Text('Edit Profile'),
           flexibleSpace: Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
                 begin: Alignment.topLeft,
@@ -510,9 +540,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
           elevation: 0,
-          iconTheme: IconThemeData(color: Colors.white),
+          iconTheme: const IconThemeData(color: Colors.white),
         ),
-        body: Center(
+        body: const Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -533,14 +563,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
     }
 
-    // Not authorized - this should not display as we redirect in _exitUnauthorized,
-    // but it's here as a safeguard
+    // Not authorized
+
     if (!_isAuthorized) {
       return Scaffold(
-        backgroundColor: Color(0xFFF5F5F5),
+        backgroundColor: const Color(0xFFF5F5F5),
         appBar: AppBar(
           centerTitle: true,
-          title: Text('Access Denied'),
+          title: const Text('Access Denied'),
           flexibleSpace: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -551,14 +581,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
           elevation: 0,
-          iconTheme: IconThemeData(color: Colors.white),
+          iconTheme: const IconThemeData(color: Colors.white),
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.security, color: Colors.red, size: 64),
-              SizedBox(height: 16),
+              const Icon(Icons.security, color: Colors.red, size: 64),
+              const SizedBox(height: 16),
               Text(
                 'Unauthorized Access',
                 style: TextStyle(
@@ -567,7 +597,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   color: Colors.red[800],
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 'You do not have permission to edit this profile.',
                 textAlign: TextAlign.center,
@@ -575,14 +605,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   color: Colors.red[700],
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red[700],
                   foregroundColor: Colors.white,
                 ),
-                child: Text('Return to previous screen'),
+                child: const Text('Return to previous screen'),
               ),
             ],
           ),
@@ -591,12 +621,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F5),
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        centerTitle: true, // Added this line to center the title
-        title: Text('Edit Profile'),
+        centerTitle: true,
+        title: const Text('Edit Profile'),
         flexibleSpace: Container(
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             gradient: LinearGradient(
               colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
               begin: Alignment.topLeft,
@@ -605,22 +635,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
         ),
         elevation: 0,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: profileViewModel.isLoading || profileViewModel.isDeletingAccount
+      body: profileViewModel.isLoading || profileViewModel.isDeletingAccount || _isLoadingProfile
           ? Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
+              const CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6A0DAD)),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               Text(
                 profileViewModel.isDeletingAccount
                     ? 'Deleting account...'
                     : 'Loading profile...',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Color(0xFF6A0DAD),
                   fontWeight: FontWeight.w500,
                 ),
@@ -628,7 +658,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ],
           ))
           : Padding(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: ListView(
@@ -640,7 +670,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   children: [
                     CircleAvatar(
                       radius: 65,
-                      backgroundColor: Color(0xFFA785D3),
+                      backgroundColor: const Color(0xFFA785D3),
                       child: CircleAvatar(
                         radius: 60,
                         backgroundColor: Colors.white,
@@ -673,7 +703,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       onTap: _showImageSourceOptions,
                       child: Container(
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
+                          gradient: const LinearGradient(
                             colors: [Color(0xFF6A0DAD), Color(0xFF3700B3)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -683,11 +713,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             BoxShadow(
                               color: Colors.black.withOpacity(0.3),
                               blurRadius: 4,
-                              offset: Offset(0, 2),
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                        child: Padding(
+                        child: const Padding(
                           padding: EdgeInsets.all(8),
                           child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
                         ),
@@ -696,16 +726,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ],
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Form fields
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
                   labelText: 'Name',
-                  labelStyle: TextStyle(color: Color(0xFF333333)),
+                  labelStyle: const TextStyle(color: Color(0xFF333333)),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6A0DAD)),
+                    borderSide: const BorderSide(color: Color(0xFF6A0DAD)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   border: OutlineInputBorder(
@@ -719,14 +749,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   return Validators.validateName(value);
                 },
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               DropdownButtonFormField<String>(
                 value: _selectedGender,
                 items: ['Male', 'Female', 'Other']
                     .map((label) => DropdownMenuItem(
-                  child: Text(label),
                   value: label,
+                  child: Text(label),
                 ))
                     .toList(),
                 onChanged: (value) {
@@ -736,9 +766,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 },
                 decoration: InputDecoration(
                   labelText: 'Gender',
-                  labelStyle: TextStyle(color: Color(0xFF333333)),
+                  labelStyle: const TextStyle(color: Color(0xFF333333)),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6A0DAD)),
+                    borderSide: const BorderSide(color: Color(0xFF6A0DAD)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   border: OutlineInputBorder(
@@ -746,7 +776,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               TextFormField(
                 readOnly: true,
@@ -755,26 +785,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     text: _selectedDate != null ? "${_selectedDate!.toLocal()}".split(' ')[0] : ''),
                 decoration: InputDecoration(
                   labelText: 'Birthdate',
-                  labelStyle: TextStyle(color: Color(0xFF333333)),
+                  labelStyle: const TextStyle(color: Color(0xFF333333)),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6A0DAD)),
+                    borderSide: const BorderSide(color: Color(0xFF6A0DAD)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  suffixIcon: Icon(Icons.calendar_today, color: Color(0xFF6A0DAD)),
+                  suffixIcon: const Icon(Icons.calendar_today, color: Color(0xFF6A0DAD)),
                 ),
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
 
               TextFormField(
                 controller: _locationController,
                 decoration: InputDecoration(
                   labelText: 'Location',
-                  labelStyle: TextStyle(color: Color(0xFF333333)),
+                  labelStyle: const TextStyle(color: Color(0xFF333333)),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF6A0DAD)),
+                    borderSide: const BorderSide(color: Color(0xFF6A0DAD)),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   border: OutlineInputBorder(
@@ -783,7 +813,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
                 validator: Validators.validateLocation,
               ),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
 
               // Save button
               ElevatedButton(
@@ -850,11 +880,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
 
-              SizedBox(height: 40),
+              const SizedBox(height: 40),
 
               // Delete account section
               Container(
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.red[50],
                   borderRadius: BorderRadius.circular(12),
@@ -871,26 +901,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         color: Colors.red[800],
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Permanently delete your account and all associated data. This action cannot be undone.',
                       style: TextStyle(
                         color: Colors.red[700],
                       ),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     TextButton(
                       onPressed: _showDeleteAccountDialog,
                       style: TextButton.styleFrom(
                         backgroundColor: Colors.red[100],
                         foregroundColor: Colors.red[800],
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                           side: BorderSide(color: Colors.red[300]!),
                         ),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.delete_forever, size: 20),
@@ -906,7 +936,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
 
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
             ],
           ),
         ),
