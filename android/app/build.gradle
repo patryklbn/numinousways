@@ -11,6 +11,22 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
+// Load local.properties for API keys
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+// Get Maps API key from local.properties
+def mapsApiKey = localProperties.getProperty('MAPS_API_KEY')
+if (mapsApiKey == null) {
+    mapsApiKey = ''
+    println 'WARNING: No MAPS_API_KEY defined in local.properties'
+}
+
 android {
     namespace = "com.patrykgronczewski.numinousway"
     compileSdk = flutter.compileSdkVersion
@@ -33,6 +49,11 @@ android {
         versionName = flutter.versionName
 
         multiDexEnabled true
+
+        // Set Maps API key as manifest placeholder
+        manifestPlaceholders = [
+                MAPS_API_KEY: mapsApiKey
+        ]
 
         // Only if you specifically need to filter out other ABIs:
         ndk {

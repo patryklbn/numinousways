@@ -217,7 +217,6 @@ class PreparationProvider extends ChangeNotifier {
           }
         }
       }
-
       // Cancel notification for the completed day.
       await _notificationService.cancelNotification(dayNumber);
       print("[PreparationProvider] Notification for Day $dayNumber canceled.");

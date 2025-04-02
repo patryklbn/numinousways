@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:numinous_ways/screens/privacy_policy.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Firebase config
 import 'firebase_options.dart';
@@ -25,8 +25,6 @@ import 'screens/my_retreat/retreat_info_screen.dart';
 import 'screens/my_retreat/preparation/preparation_course_screen.dart';
 import 'screens/my_retreat/preparation/day_detail_screen.dart';
 import 'screens/my_retreat/integration/integration_course_screen.dart';
-import 'screens/my_retreat/integration/integration_detail_screen.dart';
-import 'screens/main_app_with_drawer.dart';
 import 'screens/my_retreat/experience/experience_main_screen.dart';
 
 // ViewModels / Providers
@@ -47,6 +45,10 @@ import 'viewmodels/experience_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables
+  await dotenv.load(fileName: ".env");
+
   await initializeFirebase();
 
   final notificationService = NotificationService();
@@ -123,7 +125,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loginProvider = context.watch<LoginProvider>();
-    final user = loginProvider.user; // The current Firebase User (or null)
+    final user = loginProvider.user;
 
     // Debug print to help diagnose issues
     print("Current user: ${user?.email}, Verified: ${user?.emailVerified}");
@@ -181,6 +183,7 @@ class MyApp extends StatelessWidget {
         prepService: PreparationCourseService(FirebaseFirestore.instance),
       ),
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         title: 'Your App Name',
         theme: _buildTheme(),
         home: homeScreen,
@@ -230,12 +233,12 @@ class MyApp extends StatelessWidget {
             );
           }
 
-          // If no match, return null to let the framework handle it
           return null;
         },
       ),
     )
         : MaterialApp(
+      debugShowCheckedModeBanner: false,
       // MaterialApp for non-verified users
       title: 'Your App Name',
       theme: _buildTheme(),

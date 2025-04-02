@@ -2,7 +2,10 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 
 class StorageService {
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final FirebaseStorage _storage;
+
+  // Constructor with dependency injection
+  StorageService({FirebaseStorage? storage}) : _storage = storage ?? FirebaseStorage.instance;
 
   // Upload Facilitator Photo
   Future<String> uploadFacilitatorPhoto(File file, String facilitatorId) async {

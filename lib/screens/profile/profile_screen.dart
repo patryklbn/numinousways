@@ -32,14 +32,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoadingImages = false;
   final AiGalleryService _aiGalleryService = AiGalleryService();
 
+  // Create a dedicated ProfileViewModel for this screen
+  late ProfileViewModel _profileViewModel;
+
   @override
   void initState() {
     super.initState();
-    // Fetch the user's profile once
-    Future.microtask(() {
-      final profileVM = Provider.of<ProfileViewModel>(context, listen: false);
-      profileVM.fetchUserProfile(widget.userId);
-    });
+    // Log IDs for debugging
+    print('ProfileScreen initialized with userId: ${widget.userId}, loggedInUserId: ${widget.loggedInUserId}');
+
+    // Create a dedicated instance of ProfileViewModel
+    _profileViewModel = ProfileViewModel();
+    _profileViewModel.fetchUserProfile(widget.userId);
+  }
+
+  @override
+  void dispose() {
+    // Dispose of the dedicated ProfileViewModel when the screen is closed
+    _profileViewModel.dispose();
+    super.dispose();
   }
 
   @override
@@ -50,7 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFEFF3F7),
       appBar: AppBar(
-        centerTitle: true, // Added this line to center the title
+        centerTitle: true,
         title: const Text(
           'Profile',
           style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w600),
@@ -68,49 +79,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
       ),
       drawer: const AppDrawer(),
-      body: Consumer<ProfileViewModel>(
-        builder: (context, profileVM, _) {
-          // If still loading and no cached data => show spinner
-          if (profileVM.isLoading && profileVM.userProfile == null) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: ChangeNotifierProvider.value(
+        // Use the local ProfileViewModel instance
+        value: _profileViewModel,
+        child: Consumer<ProfileViewModel>(
+          builder: (context, profileVM, _) {
+            // If still loading and no cached data > show spinner
+            if (profileVM.isLoading && profileVM.userProfile == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          // userProfile is either cached or freshly loaded
-          final userProfile = profileVM.userProfile;
-          if (userProfile == null) {
-            return const Center(
-              child: Text("Profile not found or failed to load."),
-            );
-          }
+            final userProfile = profileVM.userProfile;
+            if (userProfile == null) {
+              return const Center(
+                child: Text("Profile not found or failed to load."),
+              );
+            }
 
-          return Column(
-            children: [
-              const SizedBox(height: 20),
-              _buildAvatarSection(profileVM, userProfile, defaultAvatarUrl),
-              const SizedBox(height: 16),
-              Text(
-                userProfile.name ?? 'User Name',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF333333),
+            return Column(
+              children: [
+                const SizedBox(height: 20),
+                _buildAvatarSection(profileVM, userProfile, defaultAvatarUrl),
+                const SizedBox(height: 16),
+                Text(
+                  userProfile.name ?? 'User Name',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF333333),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              _buildToggleButtons(),
-              Divider(
-                thickness: 1.2,
-                color: Colors.grey[400],
-                height: 32,
-                indent: 20,
-                endIndent: 20,
-              ),
-              Expanded(
-                child: _buildImageSection(),
-              ),
-            ],
-          );
-        },
+                const SizedBox(height: 20),
+                _buildToggleButtons(),
+                Divider(
+                  thickness: 1.2,
+                  color: Colors.grey[400],
+                  height: 32,
+                  indent: 20,
+                  endIndent: 20,
+                ),
+                Expanded(
+                  child: _buildImageSection(),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -124,7 +138,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             showLikedImages = true;
             _isLoadingImages = true; // Set loading state when switching
           });
-          // Allow some time for the UI to update before resetting loading state
           Future.delayed(Duration(milliseconds: 500), () {
             if (mounted) {
               setState(() {
@@ -139,7 +152,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             showLikedImages = false;
             _isLoadingImages = true; // Set loading state when switching
           });
-          // Allow some time for the UI to update before resetting loading state
           Future.delayed(Duration(milliseconds: 500), () {
             if (mounted) {
               setState(() {
@@ -192,8 +204,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       dynamic userProfile,
       String defaultAvatarUrl,
       ) {
-    // Get profile image URL from userProfile directly to fix the image not showing
+    // Get profile image URL from userProfile
     final String imageUrl = userProfile.profileImageUrl ?? defaultAvatarUrl;
+
+    // Get the current auth state from the provider for double verification
+    final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+    final currentAuthUserId = loginProvider.userId;
+
+    // Debug logging
+    print('ProfileScreen - Build Avatar Section');
+    print('  Profile ID: ${userProfile.id}');
+    print('  Widget userId: ${widget.userId}');
+    print('  Widget loggedInUserId: ${widget.loggedInUserId}');
+    print('  Current Auth userId: $currentAuthUserId');
+
+    // Check passed parameters match
+    final bool isOwnProfile = widget.userId == currentAuthUserId;
+
+    print('  Is own profile? $isOwnProfile');
 
     return Stack(
       alignment: Alignment.bottomRight,
@@ -206,7 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             backgroundColor: Colors.grey[200],
             child: ClipOval(
               child: Image.network(
-                imageUrl, // Use the local variable instead of profileVM.profileImageUrl
+                imageUrl,
                 fit: BoxFit.cover,
                 width: 130,
                 height: 130,
@@ -223,7 +251,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-        if (widget.userId == widget.loggedInUserId)
+        // Only show edit button if all security checks pass
+        if (isOwnProfile)
           Positioned(
             bottom: 8,
             right: 8,
@@ -233,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   context,
                   MaterialPageRoute(builder: (_) => EditProfileScreen()),
                 );
-                // Possibly re-fetch profile if updated
+                // re-fetch profile if updated
                 profileVM.fetchUserProfile(widget.userId);
               },
               child: const CircleAvatar(
@@ -388,7 +417,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       int likesCount,
       bool isLiked
       ) {
-    // Extract filter from prompt if it exists
     String displayPrompt = prompt;
     String? appliedFilter;
 
@@ -400,6 +428,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Remove the filter from the display prompt
         displayPrompt = prompt.replaceRange(startIndex, endIndex, '').trim();
       }
+    }
+
+    // Log navigating to another profile for debugging
+    if (creatorUserId != widget.userId) {
+      print('Viewing creator profile: userId=$creatorUserId, loggedInUser=${widget.loggedInUserId}');
     }
 
     final bool isCreator = widget.loggedInUserId == creatorUserId;
@@ -499,7 +532,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         String displayName = userName;
                         String? profileImageUrl;
 
-                        // If we have data, use the name from Firestore
+                        //  use the name from Firestore
                         if (snapshot.hasData && snapshot.data != null && snapshot.data!.exists) {
                           final userData = snapshot.data!.data() as Map<String, dynamic>?;
                           if (userData != null) {
@@ -515,12 +548,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         return GestureDetector(
                           onTap: () {
                             if (widget.loggedInUserId != null && creatorUserId != widget.userId) {
+                              // Log navigation for debugging
+                              print('Navigating to creator profile: $creatorUserId, loggedInUser: ${widget.loggedInUserId}');
+
+                              // Get the current auth state for security check
+                              final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+                              final currentAuthUserId = loginProvider.userId;
+
+                              // Create a new instance of the profile screen
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ProfileScreen(
                                     userId: creatorUserId,
-                                    loggedInUserId: widget.loggedInUserId,
+                                    loggedInUserId: currentAuthUserId ?? '',
                                   ),
                                 ),
                               );

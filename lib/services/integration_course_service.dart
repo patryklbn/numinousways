@@ -6,7 +6,7 @@ class IntegrationCourseService {
 
   IntegrationCourseService(this.firestore);
 
-  // Collection references
+  // Collection
   DocumentReference<Map<String, dynamic>> _integrationDataRef(String userId) =>
       firestore.collection('users').doc(userId).collection('integrationData').doc('data');
 
@@ -19,7 +19,7 @@ class IntegrationCourseService {
   DocumentReference<Map<String, dynamic>> _integrationContentRef() =>
       firestore.collection('integrationContent').doc('days');
 
-  /// Fetch user's integration data and merge with admin content
+  /// Fetch users integration data and merge with admin content
   Future<Map<String, dynamic>?> getUserIntegrationData(String userId) async {
     try {
       final userDoc = await _integrationDataRef(userId).get();
@@ -59,7 +59,7 @@ class IntegrationCourseService {
     }
   }
 
-  /// Set or update the course start date
+  /// Set the course start date
   Future<void> setUserStartDate(String userId, DateTime startDate) async {
     try {
       await _integrationDataRef(userId).set({

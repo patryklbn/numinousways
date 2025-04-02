@@ -58,7 +58,7 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     // Fetch actual user name instead of using placeholder
     String userName = 'User'; // Default fallback
     if (userId != null) {
-      // Start with the fetch, but don't wait for it in build
+      // Start with the fetch
       _fetchUserName(userId).then((name) {
         if (mounted && name != null && name != userName) {
           setState(() {
@@ -79,7 +79,6 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
         backgroundColor: const Color(0xFF1A1A2E),
         appBar: AppBar(
           centerTitle: true,
-          // Added this line to center the title
           title: const Text(
             'AI Image Generator',
             style: TextStyle(
@@ -158,7 +157,7 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     );
   }
 
-  // Fetch the actual user's name from Firestore
+  // Fetch the user's name from Firestore
   Future<String?> _fetchUserName(String userId) async {
     try {
       final doc = await FirebaseFirestore.instance.collection('users').doc(
@@ -767,7 +766,7 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     }
   }
 
-  // Find which moderation words are in the text
+  // Find moderation words are in the text
   List<String> _findInappropriateContent(String text) {
     final lowerCaseText = text.toLowerCase();
     return _moderationWords.where((word) => lowerCaseText.contains(word))
@@ -780,10 +779,8 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
   }
 
   // Show dialog for inappropriate content
-// Show dialog for inappropriate content
   Future<void> _showModerationDialog(BuildContext context,
       List<String> flaggedWords) async {
-    // Format the words with quotes and commas
     final formattedWords = flaggedWords.map((word) => '"$word"').join(', ');
 
     await showDialog<void>(
@@ -829,12 +826,10 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
             ],
           ),
     );
-
-    // No need to return anything since there's only one option now
   }
 
 
-  // Get the filter prompt addition - updated for post-psychedelic retreat context
+  // the filter prompt addition
   String _getFilterPrompt(String filter) {
     switch (filter) {
       case 'Mystic Glow':
@@ -852,8 +847,11 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
 
   Future<void> _generateImage(BuildContext context, String? userId,
       AiGalleryService aiGalleryService) async {
-    // Dismiss keyboard first
+    // Dismiss keyboard
     FocusScope.of(context).unfocus();
+
+    // Start timing the entire image generation
+    final totalStopwatch = Stopwatch()..start();
 
     if (userId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -873,13 +871,12 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     // Check for inappropriate content and show dialog
     final flaggedWords = _findInappropriateContent(prompt);
     if (flaggedWords.isNotEmpty) {
-      // Show the dialog - this will always force the user to edit their prompt
+      // Show the dialog
       await _showModerationDialog(context, flaggedWords);
-      // Return early, not proceeding with generation
       return;
     }
 
-    // Store the currently selected filter as the one being applied
+    // Store the currently selected filter
     final currentFilter = _selectedFilter;
 
     // Add filter prompt if selected
@@ -900,22 +897,28 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
       final openAiUrl = await aiGalleryService.generateImageFromPrompt(prompt);
 
       // 2. Upload to Firebase with compression and optimization
-      // This stores both thumbnail and full-resolution versions
       final imageUrls = await aiGalleryService.uploadAiImage(openAiUrl, userId);
 
       // 3. Update state with generated image URLs and applied filter
       setState(() {
-        // Use the detail version for display
+        // detail version for display
         _generatedImageUrl = imageUrls['detailUrl'];
         // Store all URLs for later use
         _imageUrls = imageUrls;
         _hasGeneratedImage = true;
         _isGenerating = false;
-        _appliedFilter =
-            currentFilter; // Store which filter was actually applied
+        _appliedFilter = currentFilter; // which filter was applied
       });
+
+      // Print total time
+      print('Total image generation process took ${totalStopwatch.elapsedMilliseconds}ms');
+      totalStopwatch.stop();
     } catch (e) {
       log('Error generating image: $e');
+      // Log performance for errors too
+      print('Image generation failed after ${totalStopwatch.elapsedMilliseconds}ms');
+      totalStopwatch.stop();
+
       setState(() {
         _isGenerating = false;
         _errorMessage = 'Error generating image: ${e.toString()}';
@@ -925,7 +928,7 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
 
   Future<void> _publishToGallery(BuildContext context, String? userId,
       String userName, AiGalleryService aiGalleryService) async {
-    // Dismiss keyboard first
+    // Dismiss keyboard
     FocusScope.of(context).unfocus();
 
     if (userId == null || _generatedImageUrl == null || _imageUrls == null) {
@@ -937,7 +940,7 @@ class _AiPromptScreenState extends State<AiPromptScreen> {
     }
 
     try {
-      // Add image to Firestore gallery with all URLs and metadata
+      // Add image to Firestore gallery
       await aiGalleryService.addAiImage(
         prompt: _appliedFilter != null
             ? '${_promptController.text.trim()} [${_appliedFilter}]'

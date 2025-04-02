@@ -36,6 +36,8 @@ class _GalleryViewerState extends State<GalleryViewer> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
+
+
   }
 
   @override
@@ -94,6 +96,13 @@ class MyRetreatScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loginProvider = Provider.of<LoginProvider>(context, listen: false);
+
+    // performance measurement
+    final stopwatch = Stopwatch()..start();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('My Retreat Screen loaded in ${stopwatch.elapsedMilliseconds}ms');
+      stopwatch.stop();
+    });
 
     if (!loginProvider.isLoggedIn) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

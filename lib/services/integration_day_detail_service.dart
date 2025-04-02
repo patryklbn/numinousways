@@ -10,7 +10,7 @@ class IntegrationDayDetailService {
 
   Future<DayDetail> getDayDetail(int dayNumber) async {
     try {
-      // Note the different collection name here
+
       final doc = await firestore.collection('integration_days').doc('$dayNumber').get();
 
       if (!doc.exists) {
@@ -22,15 +22,15 @@ class IntegrationDayDetailService {
       final fetchedHeroImagePath = data['heroImagePath'] as String? ??
           'assets/images/myretreat/integration_daymodule.png'; // Default integration image
 
-      // Parse tasks
+      //  tasks
       final List tasksData = data['tasks'] ?? [];
       final tasks = tasksData.map((td) => DayModule.fromMap(td)).toList();
 
-      // Parse meditation data
+      //  meditation data
       final fetchedMeditationTitle = data['meditationTitle'] as String? ?? "";
       final fetchedMeditationUrl = data['meditationUrl'] as String? ?? "";
 
-      // Parse articles
+      //  articles
       final List articlesData = data['articles'] ?? [];
       final articles = articlesData.map((ad) => Article.fromMap(ad)).toList();
 

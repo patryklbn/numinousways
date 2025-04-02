@@ -71,10 +71,8 @@ void main() {
         );
         mockFirebaseAuth = MockFirebaseAuth(mockUser: mockUser);
         authService = AuthService(authInstance: mockFirebaseAuth);
-
         // Act
         final user = await authService.signInWithEmailPassword('test@test.com', 'password');
-
         // Assert
         expect(user, isNotNull);
         expect(user?.email, 'test@test.com');

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '/models/day_detail.dart';
-import '/models/daymodule.dart';
 import '/services/day_detail_service.dart';
 import '/services/preparation_course_service.dart';
 
@@ -16,7 +15,7 @@ class DayDetailProvider extends ChangeNotifier {
     required this.isDayCompletedInitially,
     required FirebaseFirestore firestoreInstance,
     required String userId,
-  })  : _dayDetailService = DayDetailService(firestoreInstance),
+  })  : _dayDetailService = DayDetailService(firestore: firestoreInstance),
         _prepService = PreparationCourseService(firestoreInstance),
         _userId = userId;
 
@@ -31,17 +30,16 @@ class DayDetailProvider extends ChangeNotifier {
   /// Each key = task.title, value = bool for completion
   Map<String, bool> taskCompletion = {};
 
-  /// Called typically once from outside (e.g. in initState of your screen).
   Future<void> fetchData() async {
     isLoading = true;
     notifyListeners();
 
     try {
-      // 1) Fetch day detail.
+      // Fetch day detail.
       final details = await _dayDetailService.getDayDetail(dayNumber);
       dayDetail = details;
 
-      // 2) Load user-specific data for tasks from the preparation modules.
+      // Load user specific data for tasks from the preparation modules.
       final userData = await _prepService.getUserPreparationData(_userId);
       Map<String, dynamic>? selectedModuleData;
       if (userData != null && userData['modules'] is List) {
@@ -53,7 +51,7 @@ class DayDetailProvider extends ChangeNotifier {
         }
       }
 
-      // 3) Initialize local checkbox states.
+      // Initialize local checkbox states.
       final initialCompletion = <String, bool>{};
       if (details != null) {
         for (var task in details.tasks) {
@@ -88,18 +86,13 @@ class DayDetailProvider extends ChangeNotifier {
     await _prepService.updateModuleCompletion(
       _userId,
       dayNumber,
-      true, // pass "true" for day completed
+      true,
       taskCompletion,
     );
     await _updateProgress();
   }
 
-  /// Updates the overall preparation progress for the user in Firestore.
-  /// It recalculates the number of completed modules (days) and writes:
-  ///   - progress (percentage)
-  ///   - completedCount
-  ///   - totalModules (assumed to be 21)
-  ///   - lastUpdated timestamp
+
   Future<void> _updateProgress() async {
     try {
       // Fetch the user's preparation data to recalc progress.

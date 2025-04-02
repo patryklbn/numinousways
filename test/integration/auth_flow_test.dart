@@ -133,7 +133,7 @@ class TestRegisterScreen extends StatelessWidget {
             ElevatedButton(
               key: const Key('signup_button'),
               onPressed: () => onRegister?.call(
-                  "John Doe",
+                  "John Smith",
                   "test@example.com",
                   "password123",
                   "password123"
@@ -356,7 +356,7 @@ void main() {
     expect(find.text('Create Account'), findsOneWidget);
 
     // registration form
-    await tester.enterText(find.byKey(const Key('name_field')), 'John Doe');
+    await tester.enterText(find.byKey(const Key('name_field')), 'Jack smith');
     await tester.enterText(find.byKey(const Key('email_field')), 'test@example.com');
     await tester.enterText(find.byKey(const Key('password_field')), 'password123');
     await tester.enterText(find.byKey(const Key('confirm_password_field')), 'password123');

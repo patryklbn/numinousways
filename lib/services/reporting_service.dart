@@ -2,8 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/content_report.dart';
 
 class ReportingService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore _firestore;
   final String _reportsCollection = 'reports';
+
+  ReportingService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Submit a new content report
   Future<String> submitReport({

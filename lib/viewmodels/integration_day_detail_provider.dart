@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '/models/day_detail.dart';
-import '/models/daymodule.dart';
 import '/services/integration_course_service.dart';
 import '/services/integration_day_detail_service.dart';
-import '/services/day_detail_service.dart'; // For fetching original day details
+import '/services/day_detail_service.dart';
 
 class IntegrationDayDetailProvider extends ChangeNotifier {
   final int dayNumber;
@@ -14,7 +13,7 @@ class IntegrationDayDetailProvider extends ChangeNotifier {
 
   final IntegrationDayDetailService _integrationDayDetailService;
   final IntegrationCourseService _integrationService;
-  final DayDetailService _dayDetailService; // For original day details
+  final DayDetailService _dayDetailService;
 
   IntegrationDayDetailProvider({
     required this.dayNumber,
@@ -24,14 +23,13 @@ class IntegrationDayDetailProvider extends ChangeNotifier {
   })  : _integrationDayDetailService =
   IntegrationDayDetailService(firestoreInstance),
         _integrationService = IntegrationCourseService(firestoreInstance),
-        _dayDetailService = DayDetailService(firestoreInstance),
+        _dayDetailService = DayDetailService(firestore: firestoreInstance),
         _userId = userId;
 
   bool isLoading = false;
   DayDetail? dayDetail;
   bool get isDayCompleted => isDayCompletedInitially;
 
-  /// Each key = task.title, value = bool for completion
   Map<String, bool> taskCompletion = {};
 
   Future<void> fetchData() async {
@@ -41,18 +39,18 @@ class IntegrationDayDetailProvider extends ChangeNotifier {
     try {
       DayDetail? details;
 
-      // 1) Try to fetch integration day detail from integration_days collection.
+      // 1)  fetch integration day detail
       try {
         details = await _integrationDayDetailService.getDayDetail(dayNumber);
       } catch (e) {
-        // If not found, fallback to the original days collection.
+        // If not found back to the original days collection.
         print(
             'Integration day detail not found in integration_days, fetching original day detail: $e');
         details = await _dayDetailService.getDayDetail(dayNumber);
       }
       dayDetail = details;
 
-      // 2) Load user-specific data for tasks from integration data.
+      // 2) Load user data for tasks from integration data.
       final userData = await _integrationService.getUserIntegrationData(_userId);
       Map<String, dynamic>? selectedModuleData;
       if (userData != null && userData['modules'] is List) {
@@ -80,7 +78,6 @@ class IntegrationDayDetailProvider extends ChangeNotifier {
       taskCompletion = initialCompletion;
     } catch (e) {
       print('Error in IntegrationDayDetailProvider.fetchData: $e');
-      // Optionally, set an error state here for the UI.
     }
 
     isLoading = false;

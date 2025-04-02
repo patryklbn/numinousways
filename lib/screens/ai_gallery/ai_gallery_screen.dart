@@ -26,7 +26,16 @@ class _AiGalleryScreenState extends State<AiGalleryScreen> {
   void initState() {
     super.initState();
     _cleanupDeletedUserImages();
+
+    // performance measurement
+    final stopwatch = Stopwatch()..start();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('AI Gallery Screen loaded in ${stopwatch.elapsedMilliseconds}ms');
+      stopwatch.stop();
+    });
   }
+
+
 
   Future<void> _cleanupDeletedUserImages() async {
     await _aiGalleryService.cleanupDeletedUserImages();
