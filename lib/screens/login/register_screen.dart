@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -23,26 +24,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   // Register function that sends email verification
   Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
+
+
+    // Validate form
+    if (!_formKey.currentState!.validate()) {
+      print('>>> Form validation failed. Aborting registration.');
+      return;
+    }
 
     setState(() {
       _isLoading = true;
     });
+    print('>>> Form is valid. _isLoading set to true.');
 
     final loginProvider = Provider.of<LoginProvider>(context, listen: false);
 
     try {
-      // Create user account using the provider
+      print('>>> Starting signUpWithEmailAndPassword...');
       bool registrationSuccess = await loginProvider.signUpWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
       );
+      print('>>> signUpWithEmailAndPassword returned: $registrationSuccess');
 
+      // If registration failed, show error message
       if (!registrationSuccess) {
         setState(() {
           _isLoading = false;
         });
-        // Show error message from provider
+        print('>>> registrationSuccess == false, so returning early.');
         if (loginProvider.errorMessage != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -55,51 +65,78 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
-      // Get the user ID after successful registration
+      // Registration succeeded, get the user ID
       final userId = loginProvider.userId;
+      print('>>> userId from loginProvider: $userId');
       if (userId == null) {
-        throw Exception("Registration succeeded but no user ID was provided");
+        throw Exception("Registration succeeded but no user ID was provided.");
       }
 
-      // Save the user's information to Firestore with a standardised structure
-      await FirebaseFirestore.instance.collection('users').doc(userId).set({
-        'id': userId, // Always include the user ID in the document
-        'name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'createdAt': FieldValue.serverTimestamp(),
-        'emailVerified': false,
-        'bio': '',
-        'location': '',
-        'gender': null,
-        'age': null,
-        'profileImageUrl': null,
-      });
+      // Save the user's info in Firestore with proper error handling
+      bool firestoreSuccess = false;
+      try {
+        print('>>> Attempting to create Firestore doc in "users/$userId"');
 
-      print('User created successfully with ID: $userId');
-      print('User document created with standardized fields');
+        // Get current user to check email verification status
+        final User? currentUser = FirebaseAuth.instance.currentUser;
+
+        // Add timeout to prevent hanging
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
+          'id': userId,
+          'name': _nameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'createdAt': FieldValue.serverTimestamp(),
+          'emailVerified': currentUser?.emailVerified ?? false,
+          'bio': '',
+          'location': '',
+          'gender': null,
+          'age': null,
+          'profileImageUrl': null,
+        }).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            print('>>> Firestore operation timed out after 15 seconds');
+            throw TimeoutException('Firestore operation timed out');
+          },
+        );
+
+        print('>>> Firestore doc created successfully for userId: $userId');
+        firestoreSuccess = true;
+      } catch (e) {
+        print('>>> Failed to create user doc: $e');
+      }
 
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+        print('>>> _isLoading set to false. Showing success dialog...');
 
         // Show a success dialog with verification instructions
-        await DialogHelper.showSuccessDialog(
-          context,
-          "Welcome ${_nameController.text}!\n\nRegistration successful! Please check your email to verify your account before logging in.",
-        );
+        String message = "Welcome ${_nameController.text}!\n\n";
+        if (firestoreSuccess) {
+          message += "Registration successful! Please check your email to verify your account before logging in.";
+        } else {
+          message += "Your account was created, but there was an issue saving your profile data. "
+              "Please check your email to verify your account before logging in. "
+              "You can update your profile information after logging in.";
+        }
+
+        await DialogHelper.showSuccessDialog(context, message);
+        print('>>> Success dialog closed. Now logging out user...');
 
         // Sign out the user - they need to verify email before logging in
         await loginProvider.logout();
 
-        // Navigate back to login screen after the user dismisses the dialog
+        // Navigate back to login screen
         if (mounted) {
+          print('>>> Navigating back to the previous screen...');
           Navigator.pop(context);
         }
       }
-    } catch (e) {
-      // Handle errors
-      print('Error during registration: ${e.toString()}');
+    } catch (e, stackTrace) {
+      print('>>> Error during registration: $e');
+      print(stackTrace);
 
       if (mounted) {
         setState(() {
@@ -108,7 +145,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
