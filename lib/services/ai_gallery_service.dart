@@ -5,15 +5,13 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AiGalleryService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-
-  // IMPORTANT: Do not commit real keys to source control in production.
-  // Store securely or call from your own backend.
-  static const String _openAIApiKey =
-      "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";
+  final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
+  final http.Client _httpClient;
+  final Uuid _uuid;
 
   // Storage optimization constants
   static const int thumbnailMaxSize = 512; // Size for thumbnails (grid view)
@@ -22,13 +20,33 @@ class AiGalleryService {
   static const int minLikesToKeep = 3;     // Min likes for an image to be kept indefinitely
   static const int daysToKeepUnlikedImages = 30; // Days to keep images with fewer likes
 
+  // Constructor with dependency injection
+  AiGalleryService({
+    FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
+    http.Client? httpClient,
+    Uuid? uuid,
+  }) :
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance,
+        _httpClient = httpClient ?? http.Client(),
+        _uuid = uuid ?? const Uuid();
+
   /// 1) Generate image from prompt using DALL·E 3
   ///    Returns a URL to the generated image from OpenAI.
   Future<String> generateImageFromPrompt(String prompt) async {
     const String url = "https://api.openai.com/v1/images/generations";
+
+    // Get API key from environment variables
+    final apiKey = dotenv.env['OPENAI_API_KEY'];
+
+    if (apiKey == null || apiKey.isEmpty) {
+      throw Exception("OpenAI API key not found in environment variables.");
+    }
+
     final headers = {
       "Content-Type": "application/json",
-      "Authorization": "Bearer $_openAIApiKey",
+      "Authorization": "Bearer $apiKey",
     };
     final body = {
       "prompt": prompt,
@@ -37,7 +55,7 @@ class AiGalleryService {
       "size": "1024x1024"  // possible sizes: 256x256, 512x512, 1024x1024
     };
 
-    final response = await http.post(
+    final response = await _httpClient.post(
       Uri.parse(url),
       headers: headers,
       body: jsonEncode(body),
@@ -60,13 +78,13 @@ class AiGalleryService {
   Future<Map<String, String>> uploadAiImage(String imagePathOrUrl, String userId) async {
     try {
       // Download the AI image from the OpenAI URL
-      final response = await http.get(Uri.parse(imagePathOrUrl));
+      final response = await _httpClient.get(Uri.parse(imagePathOrUrl));
       if (response.statusCode != 200) {
         throw Exception("Failed to download AI image from OpenAI.");
       }
 
       final bytes = response.bodyBytes;
-      final String fileId = const Uuid().v4();
+      final String fileId = _uuid.v4();
 
       // Upload both a thumbnail version and a detail version
       final thumbnailUrl = await _uploadCompressedImage(
@@ -149,7 +167,7 @@ class AiGalleryService {
   }) async {
     await _firestore.collection('ai_images').add({
       'prompt': prompt,
-      'imageUrl': imageUrls['detailUrl'], // For backward compatibility
+      'imageUrl': imageUrls['detailUrl'],
       'thumbnailUrl': imageUrls['thumbnailUrl'],
       'detailUrl': imageUrls['detailUrl'],
       'userId': userId,
@@ -157,7 +175,7 @@ class AiGalleryService {
       'createdAt': FieldValue.serverTimestamp(),
       'likes': <String>[],
       'sizeKB': imageUrls['sizeKB'],
-      'shouldKeep': false, // Will be updated based on likes
+      'shouldKeep': false,
     });
 
     // Update storage usage statistics
@@ -324,7 +342,7 @@ class AiGalleryService {
             'imageCount': FieldValue.increment(sizeChangeKB > 0 ? 1 : -1),
           });
         } else {
-          // First time creating the stats document
+          // creating the stats document
           transaction.set(statsRef, {
             'totalSizeKB': sizeChangeKB > 0 ? sizeChangeKB : 0,
             'totalSizeMB': sizeChangeKB > 0 ? sizeChangeKB / 1024 : 0,
@@ -335,7 +353,6 @@ class AiGalleryService {
       });
     } catch (e) {
       print('Error updating storage stats: $e');
-      // Don't rethrow - this is a non-critical operation
     }
   }
 
@@ -426,7 +443,7 @@ class AiGalleryService {
         final lastCleanup = (data['lastCleanup'] as Timestamp).toDate();
         final daysSinceLastCleanup = DateTime.now().difference(lastCleanup).inDays;
 
-        // Only cleanup once a week
+        // cleanup once a week
         shouldCleanup = daysSinceLastCleanup >= 7;
       }
     }
@@ -453,15 +470,14 @@ class AiGalleryService {
       final imageUrl = data['imageUrl'] as String;
       final userId = data['userId'] as String;
 
-      // Check if URL is an OpenAI URL (they contain 'oaidalleapiprodscus')
+      // Check if URL is an OpenAI URL
       if (imageUrl.contains('oaidalleapiprodscus')) {
         try {
-          // Try to download and re-upload the image
-          final response = await http.get(Uri.parse(imageUrl));
+          //download and re-upload the image
+          final response = await _httpClient.get(Uri.parse(imageUrl));
           if (response.statusCode == 200) {
-            // Image still accessible, let's fix it
             final bytes = response.bodyBytes;
-            final String fileId = const Uuid().v4();
+            final String fileId = _uuid.v4();
 
             // Create compressed versions
             final thumbnailUrl = await _uploadCompressedImage(
