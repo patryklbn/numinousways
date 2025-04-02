@@ -19,6 +19,18 @@ class _TimelineScreenState extends State<TimelineScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+
+    // performance measurement
+    final stopwatch = Stopwatch()..start();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('Timeline Screen loaded in ${stopwatch.elapsedMilliseconds}ms');
+      stopwatch.stop();
+    });
+  }
+
+  @override
   void dispose() {
     isCommentsScreenOpen.dispose();
     _scrollController.dispose();
