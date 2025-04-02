@@ -4,12 +4,14 @@ import '../models/daymodule.dart';
 import '../models/article.dart';
 
 class DayDetailService {
-  final FirebaseFirestore firestore;
+  final FirebaseFirestore _firestore;
 
-  DayDetailService(this.firestore);
+  // Constructor with dependency injection
+  DayDetailService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<DayDetail> getDayDetail(int dayNumber) async {
-    final doc = await firestore.collection('days').doc('$dayNumber').get();
+    final doc = await _firestore.collection('days').doc('$dayNumber').get();
     if (!doc.exists) {
       throw Exception("Day detail not found for day $dayNumber");
     }

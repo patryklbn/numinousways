@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/retreat_service.dart';
 import '../models/experience/participant.dart';
 
-/// ExperienceProvider handles retreat-specific logic, such as checking enrollment
-/// and fetching participant data.
+
 class ExperienceProvider extends ChangeNotifier {
   final RetreatService _retreatService;
   final String? userId;

@@ -3,8 +3,12 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseAuth _auth;
+  final GoogleSignIn _googleSignIn;
+
+  AuthService({FirebaseAuth? authInstance, GoogleSignIn? googleSignIn})
+      : _auth = authInstance ?? FirebaseAuth.instance,
+        _googleSignIn = googleSignIn ?? GoogleSignIn();
 
   // Sign in with email and password
   Future<User?> signInWithEmailPassword(String email, String password) async {
@@ -53,7 +57,6 @@ class AuthService {
     }
 
     try {
-      // Always reload user before sending verification email
       await user.reload();
       user = _auth.currentUser;
 
@@ -72,7 +75,6 @@ class AuthService {
     try {
       User? user = _auth.currentUser;
       if (user == null) {
-        // If no user is signed in, show error
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please sign in again to request a new verification email.'),
@@ -82,12 +84,10 @@ class AuthService {
         return;
       }
 
-      // Reload user to get latest state
       await user.reload();
       user = _auth.currentUser;
 
       if (user != null && !user.emailVerified) {
-        // Send a new verification email
         await user.sendEmailVerification();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -97,7 +97,6 @@ class AuthService {
           ),
         );
       } else if (user != null && user.emailVerified) {
-        // User is already verified
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Your email is already verified! You can continue using the app.'),
@@ -122,7 +121,7 @@ class AuthService {
 
     try {
       await user.reload();
-      user = _auth.currentUser; // Get refreshed user
+      user = _auth.currentUser;
       return user?.emailVerified ?? false;
     } catch (e) {
       print("Error checking email verification: $e");
@@ -165,7 +164,6 @@ class AuthService {
 
       UserCredential userCredential = await _auth.signInWithCredential(credential);
 
-      // Get the user
       User? user = userCredential.user;
       print("Google sign-in: ${user?.email}");
 

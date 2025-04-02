@@ -3,7 +3,11 @@ import '../models/facilitator.dart';
 import '../models/venue.dart';
 
 class FirestoreService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _db;
+
+  // Constructor with dependency injection
+  FirestoreService({FirebaseFirestore? firestore})
+      : _db = firestore ?? FirebaseFirestore.instance;
 
   // -------------------------
   // Facilitators
@@ -16,7 +20,6 @@ class FirestoreService {
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => Facilitator.fromDocument(doc)).toList());
   }
-
 
   Future<void> addFacilitator(Facilitator facilitator) {
     return _db.collection('facilitators').add(facilitator.toMap());

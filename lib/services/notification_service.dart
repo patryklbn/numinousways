@@ -4,8 +4,10 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 
 class NotificationService {
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
+  NotificationService({FlutterLocalNotificationsPlugin? plugin})
+      : flutterLocalNotificationsPlugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   // Channel configuration moved to constants for easier customization
   static const String dailyReminderChannelId = 'daily_reminder_channel';

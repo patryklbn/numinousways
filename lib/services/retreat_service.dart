@@ -47,13 +47,11 @@ class RetreatService {
 
   /// Archive a retreat and clean up sensitive data
   Future<void> archiveRetreat(String retreatId) async {
-    // 1. Update the retreat to mark it as archived
     await _db.collection('retreats').doc(retreatId).update({
       'isArchived': true,
       'archivedAt': FieldValue.serverTimestamp(),
     });
 
-    // 2. Clean up sensitive data
     await cleanupSensitiveRetreatData(retreatId);
   }
 
@@ -73,8 +71,6 @@ class RetreatService {
   }
 
   /// Delete sensitive subcollections for a specific retreat
-  /// Only deletes travel details and psychedelic orders
-  /// Preserves MEQ submissions and feedback for research purposes
   Future<void> cleanupSensitiveRetreatData(String retreatId) async {
     try {
       // List of sensitive subcollections to delete
@@ -93,7 +89,6 @@ class RetreatService {
 
         if (querySnapshot.docs.isEmpty) continue;
 
-        // Use a batch write for efficient deletion
         final batch = _db.batch();
         for (final doc in querySnapshot.docs) {
           batch.delete(doc.reference);
@@ -102,13 +97,11 @@ class RetreatService {
         await batch.commit();
       }
 
-      // Update the retreat document to record the cleanup
       await _db.collection('retreats').doc(retreatId).update({
         'sensitiveDataCleanedAt': FieldValue.serverTimestamp(),
       });
 
     } catch (e) {
-      // Log error but don't rethrow to prevent breaking other processes
       print('Error cleaning up sensitive retreat data: $e');
     }
   }
