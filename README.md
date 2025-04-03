@@ -1,16 +1,12 @@
-# numinous_way
+# Numinous Ways
 
-A new Flutter project.
+A Flutter application designed to support participants before, during, and after transformational retreats.
 
-## Getting Started
+## 🧘 About the App
 
-This project is a starting point for a Flutter application.
+**Numinous Ways** is a digital companion for retreat participants. It helps users stay engaged with their retreat journey through:
 
-A few resources to get you started if this is your first Flutter project:
+- 🗓️ A 21-day preparation course with daily tasks and meditations  
+- 📋 Personalised retreat schedule and facilitator information  
+- 📝 Feedback and integration tools for post-retreat support  
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
