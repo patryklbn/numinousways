@@ -106,12 +106,6 @@ class RetreatService {
     }
   }
 
-  /// Legacy method kept for backward compatibility
-  /// Now calls the more specific cleanupSensitiveRetreatData method
-  Future<void> _cleanupTravelDetails(String retreatId) async {
-    await cleanupSensitiveRetreatData(retreatId);
-  }
-
   // =======================
   // User Account Deletion
   // =======================
@@ -119,10 +113,10 @@ class RetreatService {
   /// Delete all data associated with a user
   Future<void> deleteUserData(String userId) async {
     try {
-      // 1. Get all retreats
+      // Get all retreats
       final retreatsQuery = await _db.collection('retreats').get();
 
-      // 2. For each retreat, delete user data from all subcollections
+      // For each retreat, delete user data from all subcollections
       for (final retreatDoc in retreatsQuery.docs) {
         final retreatId = retreatDoc.id;
 
@@ -154,7 +148,6 @@ class RetreatService {
           final photoRef = _storage.ref().child('retreats/$retreatId/participants/$userId');
           await photoRef.delete();
         } catch (e) {
-          // Photo might not exist, continue
         }
       }
 

@@ -82,7 +82,7 @@ class TimelineService {
       // Get all comments to check for images
       QuerySnapshot commentsSnapshot = await postRef.collection('comments').get();
 
-      // Start a batch write
+
       WriteBatch batch = _firestore.batch();
 
       // Delete all comments and their images
@@ -110,7 +110,6 @@ class TimelineService {
           await _deleteImageFromStorage(postData['imageUrl']);
         } catch (e) {
           print('Error deleting post image: $e');
-          // Continue with post deletion even if image deletion fails
         }
       }
 
@@ -130,15 +129,11 @@ class TimelineService {
   Future<void> _deleteImageFromStorage(String imageUrl) async {
     try {
       // Extract the path from the URL
-      // Firebase Storage URLs typically look like:
-      // https://firebasestorage.googleapis.com/v0/b/[bucket]/o/[path]?alt=media&token=[token]
-
       // Parse the URL to get the storage path
       Uri uri = Uri.parse(imageUrl);
       String path = Uri.decodeComponent(uri.path);
 
-      // The path format is typically /v0/b/[bucket]/o/[encoded_file_path]
-      // We need the part after '/o/'
+
       int startIndex = path.indexOf('/o/') + 3;
       String storagePath = path.substring(startIndex);
 
@@ -165,7 +160,7 @@ class TimelineService {
       await commentsRef.add({
         'userId': userId,
         'content': content,
-        'imageUrl': imageUrl, // Add the image URL if available
+        'imageUrl': imageUrl,
         'likesCount': 0,
         'createdAt': FieldValue.serverTimestamp(),
       });
@@ -290,7 +285,6 @@ class TimelineService {
       if (commentSnapshot.exists) {
         Map<String, dynamic> data = commentSnapshot.data() as Map<String, dynamic>;
 
-        // Safely handle the likes field - it might not exist in older documents
         List<dynamic> likes = [];
         int likesCount = 0;
 
@@ -303,7 +297,7 @@ class TimelineService {
         if (data.containsKey('likesCount')) {
           likesCount = data['likesCount'];
         } else {
-          // If likesCount doesn't exist, initialize it with the length of likes
+          // If likesCount doesn't exist, creatyer it with the length of likes
           likesCount = likes.length;
         }
 

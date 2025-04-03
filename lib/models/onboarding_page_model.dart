@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class OnboardingPageModel {
   final String title;
   final String description;
-  final String? imageUrl; // Make imageUrl nullable for flexibility
+  final String? imageUrl;
   final String? imageAsset; // New field for local assets
   final Color bgColor;
   final Color textColor;

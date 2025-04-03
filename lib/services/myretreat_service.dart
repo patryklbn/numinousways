@@ -111,7 +111,6 @@ class MyRetreatService {
       images: imageUrls,
     );
 
-    // Then use your FirestoreService to add it
     await _firestoreService.addVenue(newVenue);
   }
 
@@ -146,7 +145,6 @@ class MyRetreatService {
       images: updatedImageUrls,
     );
 
-    // Then update in Firestore
     await _firestoreService.updateVenue(updatedVenue);
   }
 

@@ -90,7 +90,7 @@ class Participant {
     };
   }
 
-  // Here is the copyWith method
+  // copyWith method
   Participant copyWith({
     bool? shareBio,
     String? detailedBio,
@@ -110,8 +110,8 @@ class Participant {
     String? photoUrl,
   }) {
     return Participant(
-      userId: userId,  // typically unchanged
-      role: role,      // typically unchanged
+      userId: userId,
+      role: role,
       shareBio: shareBio ?? this.shareBio,
       detailedBio: detailedBio ?? this.detailedBio,
       meqConsent: meqConsent ?? this.meqConsent,

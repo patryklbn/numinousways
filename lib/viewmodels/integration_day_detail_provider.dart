@@ -39,7 +39,7 @@ class IntegrationDayDetailProvider extends ChangeNotifier {
     try {
       DayDetail? details;
 
-      // 1)  fetch integration day detail
+      // fetch integration day detail
       try {
         details = await _integrationDayDetailService.getDayDetail(dayNumber);
       } catch (e) {

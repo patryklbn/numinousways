@@ -47,7 +47,7 @@ class ProfileService {
     }
   }
 
-  // Upload profile image and return download URL (always override existing)
+  // Upload profile image and return download URL
   Future<String?> uploadProfileImage(File imageFile, String userId) async {
     try {
       // Compress the image first
@@ -59,13 +59,13 @@ class ProfileService {
       // Reference to the storage path with userId and fixed filename
       final storageRef = _storage.ref().child('profile_images/$userId/$fileName');
 
-      // This will override any existing file at this path
+      // Override any existing file at this path
       await storageRef.putFile(compressedImage);
 
-      // Get the download URL (with cache busting parameter)
+      // Get the download URL
       final downloadUrl = await storageRef.getDownloadURL();
 
-      // Return a URL with cache-busting parameter to prevent showing old images
+      // Return a URL
       final cacheBustedUrl = '$downloadUrl?t=${DateTime.now().millisecondsSinceEpoch}';
 
       return cacheBustedUrl;
@@ -163,9 +163,9 @@ class ProfileService {
       for (var doc in postsSnapshot.docs) {
         await doc.reference.update({
           'userId': anonymousId,
-          'userName': anonymousName,  // Make sure we use 'Deleted User' not 'No Name'
+          'userName': anonymousName,
           'userProfileImageUrl': null,
-          'isAnonymized': true  // Add a flag to indicate this was anonymized
+          'isAnonymized': true
         });
         print('Anonymized post: ${doc.id}');
       }
@@ -177,14 +177,13 @@ class ProfileService {
       for (var doc in commentsSnapshot.docs) {
         await doc.reference.update({
           'userId': anonymousId,
-          'userName': anonymousName,  // Make sure we use 'Deleted User' not 'No Name'
+          'userName': anonymousName,
           'userProfileImageUrl': null,
           'isAnonymized': true
         });
         print('Anonymized comment: ${doc.id}');
       }
 
-      // Check if the app has a timeline or feed collection
       try {
         final timelineQuery = _firestore.collection('timeline').where('userId', isEqualTo: userId);
         final timelineSnapshot = await timelineQuery.get();
@@ -199,7 +198,6 @@ class ProfileService {
           print('Anonymized timeline item: ${doc.id}');
         }
       } catch (e) {
-        // Timeline collection might not exist, that's okay
         print('Note: No timeline collection found or error accessing it: $e');
       }
 

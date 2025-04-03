@@ -1,26 +1,26 @@
 // models/travel_details.dart
 class TravelDetails {
-  final String userId; // Helps link data to a user if needed
+  final String userId;
 
   final String name;
   final String surname;
   final String mobileNumber;
 
-  final String methodOfArrival; // e.g. "PLANE" or "TRAIN"
+  final String methodOfArrival;
   final String arrivalFlightNumber;
-  final String arrivalDate; // Store as String or DateTime
-  final String arrivalTime; // Store as String or TimeOfDay
+  final String arrivalDate;
+  final String arrivalTime;
 
-  final String departureMethod; // e.g. "PLANE" or "TRAIN"
+  final String departureMethod;
   final String departureFlightNumber;
   final String departureDate;
   final String departureTime;
 
   final String passportNumber;
-  final String passportIssuingDate;  // e.g. "YYYY-MM-DD"
+  final String passportIssuingDate;
   final String passportPlaceOfIssue;
   final String birthPlace;
-  final String dob;                 // e.g. "YYYY-MM-DD"
+  final String dob;
   final String nationality;
 
   final String additionalComment;

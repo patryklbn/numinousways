@@ -12,7 +12,7 @@ import '../../utils/anonymized_user_helper.dart';
 import './/widgets/timeline/report_content_dialog.dart'; // Import the report dialog
 
 class CommentWidget extends StatefulWidget {
-  final String postId; // The ID of the post to which the comment belongs
+  final String postId;
   final Comment comment;
 
   const CommentWidget({
@@ -111,8 +111,6 @@ class _CommentWidgetState extends State<CommentWidget> {
   Future<void> _deleteComment() async {
     try {
       await _timelineService.deleteComment(widget.postId, widget.comment.id);
-      // Because you have a real-time subscription to comments in CommentsScreen,
-      // the list should auto-update upon deletion. If not, you can manually refresh.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

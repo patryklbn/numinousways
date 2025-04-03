@@ -33,10 +33,8 @@ class LoginProvider extends ChangeNotifier {
     });
   }
 
-  // MARK: - User Document Management
 
   /// Creates or updates a user document in Firestore
-  /// This is the single source of truth for user document creation
   Future<bool> _ensureUserDocument(User user) async {
     try {
       final userId = user.uid;
@@ -130,7 +128,6 @@ class LoginProvider extends ChangeNotifier {
     }
   }
 
-  // MARK: - Authentication Methods
 
   /// Sign in with email and password
   Future<bool> signInWithEmailAndPassword(String email, String password) async {
@@ -212,7 +209,7 @@ class LoginProvider extends ChangeNotifier {
 
       print('Google account selected: ${googleUser.email}');
 
-      // Obtain auth details
+      // auth details
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       // Create credential
@@ -248,7 +245,6 @@ class LoginProvider extends ChangeNotifier {
 
         if (!docCreated) {
           print('WARNING: Failed to create user document after multiple attempts');
-          // We still return true since auth was successful
         }
       }
 
@@ -419,10 +415,9 @@ class LoginProvider extends ChangeNotifier {
       return diff.inMinutes > 30;
     }
 
-    return true; // Default to requiring reauthentication if we can't determine
+    return true;
   }
 
-  // MARK: - Helper Methods
 
   /// Set loading state and notify listeners
   void _setLoading(bool loading) {
