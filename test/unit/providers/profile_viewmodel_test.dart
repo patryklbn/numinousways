@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:numinous_ways/models/user_profile.dart';
 
@@ -117,7 +116,7 @@ void main() {
         name: 'Test User',
       );
 
-      // Set cache with a timestamp from 10 minutes ago (beyond the 5 minute cache duration)
+      // Set cache with a timestamp from 10 minutes ago
       viewModel.setupCache(
           userId,
           testProfile,
@@ -137,7 +136,7 @@ void main() {
         name: 'Test User',
       );
 
-      // Set cache with a timestamp from 1 minute ago (within the 5 minute cache duration)
+      // Set cache with a timestamp from 1 minute ago
       viewModel.setupCache(
           userId,
           testProfile,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/timeline_service.dart';
 import '../../models/post.dart';
 import '../../models/user_profile.dart';
@@ -11,8 +10,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/login_provider.dart';
 import '../../utils/anonymized_user_helper.dart';
-import '../../services/reporting_service.dart';  // Import the reporting service
-import 'report_content_dialog.dart';  // Import the report dialog
+import 'report_content_dialog.dart';
 
 class PostWidget extends StatefulWidget {
   final Post post;

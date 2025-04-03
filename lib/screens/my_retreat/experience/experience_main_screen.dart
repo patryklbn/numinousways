@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:numinous_ways/screens/my_retreat/experience/experience_detail_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -8,17 +7,15 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../models/experience/retreat.dart';
-import '../../../models/experience/participant.dart';
 import '../../../models/facilitator.dart';
 import '../../../models/venue.dart';
 import '../../../services/retreat_service.dart';
 import '../../../services/login_provider.dart';
 import '../../../services/myretreat_service.dart';
 import '../../../widgets/experience/retreat_card.dart';
-import '../../full_screen_image_viewer.dart';
 import '../facilitator_profile_screen.dart';
 import '../../../widgets/experience/small_map_widget.dart';
-import '../../../viewmodels/experience_provider.dart'; // Import the provider
+import '../../../viewmodels/experience_provider.dart';
 
 class ExperienceMainScreen extends StatefulWidget {
   const ExperienceMainScreen({Key? key}) : super(key: key);

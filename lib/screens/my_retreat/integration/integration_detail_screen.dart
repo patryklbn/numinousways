@@ -4,10 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '/models/day_detail.dart';
-import '/models/daymodule.dart';
 import '/models/article.dart';
 import '/screens/my_retreat/audio_player_screen.dart';
-import '/viewmodels/integration_day_detail_provider.dart'; // Updated import
+import '/viewmodels/integration_day_detail_provider.dart';
 
 class IntegrationDayDetailScreen extends StatefulWidget {
   final int dayNumber;

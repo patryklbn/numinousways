@@ -1,6 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'package:numinous_ways/services/retreat_service.dart';
 import 'package:numinous_ways/models/experience/participant.dart';
 import 'package:numinous_ways/viewmodels/experience_provider.dart';

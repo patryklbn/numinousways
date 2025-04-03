@@ -11,7 +11,6 @@ import '../../../models/experience/participant.dart';
 import '../../../models/venue.dart';
 import '../../../models/facilitator.dart';
 import '../../../services/myretreat_service.dart';
-import '../../../services/login_provider.dart';
 import '../../../services/retreat_service.dart';
 import '../../../widgets/experience/small_map_widget.dart';
 import '../../full_screen_image_viewer.dart';
