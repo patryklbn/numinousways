@@ -14,7 +14,7 @@ void main() {
     });
 
     test('getDayDetail returns correct day details when day exists', () async {
-      // Arrange - Set up test data with correct field structure
+      // Arrange
       final dayNumber = 1;
       await fakeFirestore.collection('days').doc('$dayNumber').set({
         'title': 'Test Day 1',
@@ -78,7 +78,7 @@ void main() {
     });
 
     test('getDayDetail handles missing optional fields', () async {
-      // Arrange - Set up minimal data with required fields only
+      // Arrange
       final dayNumber = 2;
       await fakeFirestore.collection('days').doc('$dayNumber').set({
         'title': 'Minimal Day',

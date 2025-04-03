@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:numinous_ways/models/comment.dart';
-import 'package:numinous_ways/models/user_profile.dart';
 import 'package:numinous_ways/services/login_provider.dart';
 
 // Simple mock class for LoginProvider

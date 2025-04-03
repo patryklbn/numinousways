@@ -2,8 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:numinous_ways/viewmodels/day_detail_provider.dart';
-import 'package:numinous_ways/models/daymodule.dart';
-import 'package:numinous_ways/models/day_detail.dart';
 import 'package:numinous_ways/services/day_detail_service.dart';
 import 'package:numinous_ways/services/preparation_course_service.dart';
 

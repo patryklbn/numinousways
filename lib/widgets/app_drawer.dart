@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/login_provider.dart';
-import '../viewmodels/profile_viewmodel.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class AppDrawer extends StatefulWidget {

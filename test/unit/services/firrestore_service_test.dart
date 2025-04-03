@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:numinous_ways/services/firestore_service.dart';
 
@@ -16,25 +14,23 @@ void main() {
 
   group('Firestore Service Tests', () {
     test('getFacilitators should return a stream of data from Firestore', () async {
-      // Arrange - Add some test data directly to fake Firestore
+      // Arrange
       await fakeFirestore.collection('facilitators').add({
         'name': 'Facilitator 1',
         'role': 'Role 1',
         'order': 1,
-        // Add other required fields for your Facilitator document
       });
 
       await fakeFirestore.collection('facilitators').add({
         'name': 'Facilitator 2',
         'role': 'Role 2',
         'order': 2,
-        // Add other required fields for your Facilitator document
       });
 
-      // Act - Get the stream of facilitators
+      // Act
       final facilitatorsStream = firestoreService.getFacilitators();
 
-      // Assert - Verify we get the data in the correct order
+      // Assert
       final facilitators = await facilitatorsStream.first;
       expect(facilitators.length, 2);
       expect(facilitators[0].name, 'Facilitator 1'); // First by order
@@ -42,58 +38,53 @@ void main() {
     });
 
     test('getVenues should return a stream of data from Firestore', () async {
-      // Arrange - Add some test data directly to fake Firestore
+      // Arrange
       await fakeFirestore.collection('venues').add({
         'name': 'Venue 1',
         'description': 'Description 1',
-        // Add other required fields for your Venue document
       });
 
       await fakeFirestore.collection('venues').add({
         'name': 'Venue 2',
         'description': 'Description 2',
-        // Add other required fields for your Venue document
       });
 
-      // Act - Get the stream of venues
+      // Act
       final venuesStream = firestoreService.getVenues();
 
-      // Assert - Verify we get both venues
+      // Assert
       final venues = await venuesStream.first;
       expect(venues.length, 2);
-      // Since venues aren't ordered, just check that both venues exist
       expect(venues.any((venue) => venue.name == 'Venue 1'), true);
       expect(venues.any((venue) => venue.name == 'Venue 2'), true);
     });
 
     test('deleteFacilitator should remove a document from Firestore', () async {
-      // Arrange - Add a test document
+      // Arrange
       final docRef = await fakeFirestore.collection('facilitators').add({
         'name': 'Test Facilitator',
         'role': 'Test Role',
-        // Add other required fields for your Facilitator document
       });
 
-      // Act - Delete the facilitator
+      // Act
       await firestoreService.deleteFacilitator(docRef.id);
 
-      // Assert - Verify the document is deleted
+      // Assert
       final docSnapshot = await fakeFirestore.collection('facilitators').doc(docRef.id).get();
       expect(docSnapshot.exists, false);
     });
 
     test('deleteVenue should remove a document from Firestore', () async {
-      // Arrange - Add a test document
+      // Arrange
       final docRef = await fakeFirestore.collection('venues').add({
         'name': 'Test Venue',
         'description': 'Test Description',
-        // Add other required fields for your Venue document
       });
 
-      // Act - Delete the venue
+      // Act
       await firestoreService.deleteVenue(docRef.id);
 
-      // Assert - Verify the document is deleted
+      // Assert
       final docSnapshot = await fakeFirestore.collection('venues').doc(docRef.id).get();
       expect(docSnapshot.exists, false);
     });

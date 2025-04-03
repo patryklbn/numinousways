@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
 import '/models/daymodule.dart';
 import '/viewmodels/integration_provider.dart';
 import '/widgets/integration/daymodule_card.dart';
