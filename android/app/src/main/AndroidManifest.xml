@@ -10,13 +10,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:name="${applicationName}"
+        android:name=".MainApplication"
         android:label="Numinous_Ways"
         android:icon="@mipmap/ic_launcher">
 
         <!-- =====================
-     Google Maps API Key
-     ===================== -->
+             Google Maps API Key
+        ===================== -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
