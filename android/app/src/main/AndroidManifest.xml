@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:name=".MainApplication"
+
         android:label="Numinous_Ways"
         android:icon="@mipmap/ic_launcher">
 
