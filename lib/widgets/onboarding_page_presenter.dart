@@ -44,7 +44,6 @@ class _OnboardingPagePresenterState extends State<OnboardingPagePresenter> {
                 final item = widget.pages[idx];
                 return Column(
                   children: [
-                    // Image that expands to full width but maintains original aspect ratio
                     item.imageAsset != null
                         ? Image.asset(
                       item.imageAsset!,

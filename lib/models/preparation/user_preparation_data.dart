@@ -10,7 +10,7 @@ class UserPreparationData {
   });
 
   factory UserPreparationData.fromMap(Map<String, dynamic> map) {
-    // Parse the startDate (if it exists)
+    // Parse the startDate
     DateTime? start;
     if (map['startDate'] != null) {
       final timestamp = map['startDate'];

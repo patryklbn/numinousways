@@ -5,7 +5,7 @@ class UserProfile {
   String? age;
   String? location;
   String? bio;
-  String? profileImageUrl; // Remove `final` here
+  String? profileImageUrl;
 
   UserProfile({
     this.id,

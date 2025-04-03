@@ -53,7 +53,7 @@ class Comment {
     return {
       'userId': userId,
       'content': content,
-      'imageUrl': imageUrl, // Add the imageUrl field to the map
+      'imageUrl': imageUrl,
       'createdAt': createdAt,
       'likesCount': likesCount,
 

@@ -32,8 +32,7 @@ class AiGalleryService {
         _httpClient = httpClient ?? http.Client(),
         _uuid = uuid ?? const Uuid();
 
-  /// 1) Generate image from prompt using DALL·E 3
-  ///    Returns a URL to the generated image from OpenAI.
+  /// 1) Generate image from prompt using DALL E 3
   Future<String> generateImageFromPrompt(String prompt) async {
     const String url = "https://api.openai.com/v1/images/generations";
 
@@ -50,7 +49,7 @@ class AiGalleryService {
     };
     final body = {
       "prompt": prompt,
-      "model": "dall-e-3", // Specify the DALL·E 3 model here
+      "model": "dall-e-3",
       "n": 1,          // how many images to generate
       "size": "1024x1024"  // possible sizes: 256x256, 512x512, 1024x1024
     };
@@ -68,13 +67,11 @@ class AiGalleryService {
     }
 
     final decoded = jsonDecode(response.body);
-    // We requested n=1, so there's only one image in "data"
     final String imageUrl = decoded["data"][0]["url"];
     return imageUrl;
   }
 
   /// 2) Download, compress, and upload the generated image to Firebase Storage
-  ///    This is MANDATORY because DALL-E URLs expire after a short period
   Future<Map<String, String>> uploadAiImage(String imagePathOrUrl, String userId) async {
     try {
       // Download the AI image from the OpenAI URL
@@ -103,7 +100,7 @@ class AiGalleryService {
           'detail'
       );
 
-      // Calculate and store the size of the image in KB
+      // Calculate and store the size of the image
       final imageSizeKB = bytes.length / 1024;
 
       return {
@@ -158,7 +155,7 @@ class AiGalleryService {
     }
   }
 
-  /// 3) Save image data to Firestore with additional metadata
+  /// Save image data to Firestore with additional metadata
   Future<void> addAiImage({
     required String prompt,
     required Map<String, String> imageUrls,
@@ -178,11 +175,10 @@ class AiGalleryService {
       'shouldKeep': false,
     });
 
-    // Update storage usage statistics
     await _updateStorageStats(double.parse(imageUrls['sizeKB'] ?? '0'));
   }
 
-  /// 4) A Stream to fetch all images (real-time)
+  /// 4) A Stream to fetch all images
   Stream<QuerySnapshot> streamAllImages() {
     return _firestore
         .collection('ai_images')
@@ -203,7 +199,7 @@ class AiGalleryService {
         'likes': FieldValue.arrayRemove([userId]),
       });
 
-      // Check if we need to update the shouldKeep flag
+      // Check if need to update the shouldKeep flag
       final doc = await docRef.get();
       final data = doc.data() as Map<String, dynamic>?;
       if (data != null) {
@@ -217,12 +213,11 @@ class AiGalleryService {
         'likes': FieldValue.arrayUnion([userId]),
       });
 
-      // Check if we need to update the shouldKeep flag
+      // Check if need to update the shouldKeep flag
       final doc = await docRef.get();
       final data = doc.data() as Map<String, dynamic>?;
       if (data != null) {
         final likes = List<String>.from(data['likes'] ?? []);
-        // +1 because we just added a like but it's not in the data yet
         if (likes.length + 1 >= minLikesToKeep) {
           await docRef.update({'shouldKeep': true});
         }
@@ -302,7 +297,6 @@ class AiGalleryService {
       final cutoffDate = DateTime.now().subtract(Duration(days: daysToKeepUnlikedImages));
 
       // Find images older than cutoff date with fewer than minLikesToKeep likes
-      // and not marked for keeping
       final snapshot = await _firestore
           .collection('ai_images')
           .where('shouldKeep', isEqualTo: false)
@@ -327,7 +321,6 @@ class AiGalleryService {
     try {
       final statsRef = _firestore.collection('app_stats').doc('storage');
 
-      // Use transactions to safely update the counter
       await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(statsRef);
 
@@ -517,7 +510,6 @@ class AiGalleryService {
             await _updateStorageStats(sizeKB);
           } else {
             print('Image URL expired and cannot be recovered: ${doc.id}');
-            // Mark as expired in Firestore
             await _firestore
                 .collection('ai_images')
                 .doc(doc.id)

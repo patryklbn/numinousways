@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -87,14 +86,11 @@ class IntegrationProvider extends ChangeNotifier {
       hasUserClickedStart = true;
       await integrationService.setUserStartDate(userId, startDate);
 
-      // Reset and initialize modules.
       final freshModules = _generateDefaultModules();
       allModules = _applyDailyLocking(freshModules);
       await integrationService.updateModuleState(userId, freshModules);
 
-      // Schedule notifications for the first 3 days (example).
-      // If you only want Day 1 on the first day, Day 2 on the second, etc., then
-      // consider removing this loop or adjusting logic similarly to markModuleCompleted.
+      // Schedule notifications for the first 3 days /////// exmaple not working so far
       for (int i = 1; i <= 3; i++) {
         final dayUnlockDate = startDate.add(Duration(days: i - 1));
         print('[IntegrationProvider] Scheduling notification for Day $i at $dayUnlockDate');
@@ -127,7 +123,7 @@ class IntegrationProvider extends ChangeNotifier {
 
     try {
       final now = DateTime.now();
-      // Example: start from today's date at 6 AM
+      // Example: start from today's date at 6 AM To be implemented later
       userStartDate = DateTime(now.year, now.month, now.day, 6, 0, 0);
       print('[IntegrationProvider] Starting course, userStartDate = $userStartDate');
 
@@ -148,7 +144,7 @@ class IntegrationProvider extends ChangeNotifier {
     }
   }
 
-  /// Mark the day [dayNumber] as completed, and schedule a notification *only* for the next day.
+  /// Mark the day [dayNumber] as completed, and schedule a notification only for the next day.
   Future<void> markModuleCompleted(int dayNumber) async {
     print('[IntegrationProvider] markModuleCompleted called for Day $dayNumber');
 
@@ -172,19 +168,19 @@ class IntegrationProvider extends ChangeNotifier {
         userId,
         dayNumber,
         true,
-        {}, // Empty map since we don't track individual tasks here
+        {},
       );
 
       // Update progress after marking a module as completed.
       await _updateProgress();
 
-      // Cancel any existing notification for this day (if it was pending).
+      // Cancel any existing notification for this day
       final currentDayNotifId = dayNumber + 1000;
       await _notificationService.cancelNotification(currentDayNotifId);
       print('[IntegrationProvider] Canceled notification ID = $currentDayNotifId for Day $dayNumber');
 
-      // -------- NEW LOGIC --------
-      // Now schedule a notification *only for the next day*, if it isn’t completed.
+
+      // Now schedule a notification only for the next day
       final nextDayNumber = dayNumber + 1;
       if (nextDayNumber <= 21) {
         final nextDayModule = allModules.firstWhere(

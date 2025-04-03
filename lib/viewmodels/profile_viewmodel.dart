@@ -10,9 +10,9 @@ class ProfileViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool _isDeletingAccount = false;
   String? _deleteError;
-  String? _lastFetchedUserId; // Track the last user ID we tried to fetch
-  Map<String, UserProfile> _profileCache = {}; // Cache profiles by userId
-  Map<String, DateTime> _lastFetchTime = {}; // Track when profiles were last fetched
+  String? _lastFetchedUserId; // last user ID
+  Map<String, UserProfile> _profileCache = {};
+  Map<String, DateTime> _lastFetchTime = {};
   final Duration _cacheDuration = Duration(minutes: 5); // Cache expiration time
 
   UserProfile? get userProfile => _userProfile;
@@ -20,8 +20,6 @@ class ProfileViewModel extends ChangeNotifier {
   bool get isDeletingAccount => _isDeletingAccount;
   String? get deleteError => _deleteError;
   String? get lastFetchedUserId => _lastFetchedUserId;
-
-  // Fix for the profileImageUrl getter
   String? get profileImageUrl => _userProfile?.profileImageUrl;
 
   // Check if cache is valid for user
@@ -42,12 +40,12 @@ class ProfileViewModel extends ChangeNotifier {
     _lastFetchTime.remove(userId);
   }
 
-  // Main method to fetch user profile with caching
+  // fetch user profile with caching
   Future<UserProfile?> fetchUserProfile(String userId) async {
     print('Fetching profile for userId: $userId');
     _lastFetchedUserId = userId;
 
-    // Skip if we're already loading this profile
+    // Skip if already loaded this profile
     if (_isLoading && _userProfile?.id == userId) {
       print('Already loading profile for $userId, skipping duplicate request');
       return _userProfile;
@@ -133,7 +131,7 @@ class ProfileViewModel extends ChangeNotifier {
       final userMap = {
         'id': userId,
         'name': 'User',
-        'email': '', // This would be filled by the auth provider
+        'email': '',
         'createdAt': FieldValue.serverTimestamp(),
         'emailVerified': false,
         'bio': '',
@@ -291,7 +289,7 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  // Force refresh a profile (ignore cache)
+  // Force refresh a profile
   Future<UserProfile?> forceRefreshProfile(String userId) async {
     print('Force refreshing profile for $userId');
     // Clear cache for this user

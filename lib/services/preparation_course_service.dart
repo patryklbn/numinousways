@@ -49,9 +49,9 @@ class PreparationCourseService {
       final beforeDoc = userDoc.collection('ppsForms').doc('before');
       final afterDoc = userDoc.collection('ppsForms').doc('after');
 
-      // Overwrite preparation data (do not merge) to reset completions.
+      // Overwrite preparation data to reset completions.
       batch.set(prepDataRef, {
-        'startDate': null,  // Clear startDate
+        'startDate': null,
         'modules': modulesData,
       }, SetOptions(merge: false));
 
@@ -79,9 +79,6 @@ class PreparationCourseService {
   }
 
   /// Updates a single module's completion state & tasks using a transaction for atomicity.
-  ///
-  /// The [taskCompletion] map should represent the completion state of each task
-  /// within the module, typically structured as { 'taskId': bool }.
   Future<void> updateModuleCompletion(
       String userId,
       int dayNumber,
@@ -101,7 +98,6 @@ class PreparationCourseService {
         for (int i = 0; i < modulesData.length; i++) {
           if (modulesData[i]['dayNumber'] == dayNumber) {
             modulesData[i]['isCompleted'] = isCompleted;
-            // Expecting tasks structure as a map: { 'taskId': bool, ... }
             modulesData[i]['tasks'] = Map<String, dynamic>.from(taskCompletion);
             break;
           }

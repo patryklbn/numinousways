@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -93,7 +92,7 @@ class PreparationProvider extends ChangeNotifier {
         userStartDate = null;
       }
 
-      // Unlock Day 0 if course has started; lock others initially
+      // Unlock Day0 if course has started; lock others initially
       userModules = userModules.map((m) {
         if (m.dayNumber == 0 && userStartDate != null) {
           return m.copyWith(isLocked: false);
@@ -158,7 +157,7 @@ class PreparationProvider extends ChangeNotifier {
         await userDoc.collection('ppsForms').doc('after').delete();
       } catch (_) {}
 
-      // Notifications will be scheduled after Day 0 completion.
+      // Notifications will be scheduled after Dayy0 completion.
     } catch (e) {
       errorMessage = 'Failed to start course: $e';
       notifyListeners();
@@ -230,7 +229,7 @@ class PreparationProvider extends ChangeNotifier {
     modules.sort((a, b) => a.dayNumber.compareTo(b.dayNumber));
     final now = DateTime.now();
 
-    // Safely retrieve Day 0
+    // retrieve Day0
     DayModule? day0;
     try {
       day0 = modules.firstWhere((m) => m.dayNumber == 0);
@@ -242,7 +241,7 @@ class PreparationProvider extends ChangeNotifier {
     for (int i = 0; i < modules.length; i++) {
       final mod = modules[i];
 
-      // *** Day 0 handling ***
+      //  Day0 handling
       if (mod.dayNumber == 0) {
         if (userStartDate == null) {
           modules[i] = mod.copyWith(isLocked: true);
@@ -252,17 +251,17 @@ class PreparationProvider extends ChangeNotifier {
         continue;
       }
 
-      // *** Days 1..21 locking logic ***
+      // Days1..21 locking logic
       if (mod.dayNumber >= 1 && mod.dayNumber <= 21) {
         bool locked = true;
-        // Only unlock further days if Day 0 is completed
+        // Only unlock further days if Day0 is completed
         if (userStartDate != null && day0Completed) {
           final unlockDate = userStartDate!.add(Duration(days: mod.dayNumber - 1));
           locked = now.isBefore(unlockDate);
         }
         modules[i] = mod.copyWith(isLocked: locked);
       }
-      // *** Day 22 locking logic ***
+      // Day22 locking logic
       else if (mod.dayNumber == 22) {
         bool locked = true;
         if (userStartDate != null && day0Completed) {

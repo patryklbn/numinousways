@@ -23,10 +23,9 @@ class RetreatCard extends StatelessWidget {
   static const Color subtitleColor = Color(0xFFA0A0A0); // Grey color
   static const Color iconBackgroundColor = Colors.white; // Background for icons
 
-  // New color for Retreat Details background
+
   static const Color detailsBackgroundColor = Colors.white; // Clean white background
-  // Alternatively, use a subtle light grey for a softer look:
-  // static const Color detailsBackgroundColor = Color(0xFFF9F9F9);
+
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +53,7 @@ class RetreatCard extends StatelessWidget {
                       placeholder: (context, url) => Container(
                         height: 220,
                         color: Colors.grey[300],
-                        child: Center(
+                        child: const Center(
                           child: CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(accentColor),
                           ),
@@ -63,7 +62,7 @@ class RetreatCard extends StatelessWidget {
                       errorWidget: (context, url, error) => Container(
                         height: 220,
                         color: Colors.grey[300],
-                        child: Icon(
+                        child: const Icon(
                           Icons.error,
                           color: accentColor,
                           size: 40,
@@ -111,11 +110,10 @@ class RetreatCard extends StatelessWidget {
                   ],
                 ),
               ),
-            // Retreat Details with Updated Background
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: detailsBackgroundColor, // Set the new background color
+                color: detailsBackgroundColor,
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
               ),
               padding: const EdgeInsets.all(16.0),
@@ -132,7 +130,7 @@ class RetreatCard extends StatelessWidget {
                           retreat.location,
                           style: GoogleFonts.lato(
                             textStyle: TextStyle(
-                              color: primaryColor, // Darker color for better contrast
+                              color: primaryColor,
                               fontSize: 14,
                             ),
                           ),
@@ -179,10 +177,6 @@ class RetreatCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Divider (Optional: can be removed if not needed)
-            // Divider(height: 1, color: Colors.grey[300]),
-            // Action Buttons or Additional Info (Optional)
-            // You can add more widgets here if needed
           ],
         ),
       ),
