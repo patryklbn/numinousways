@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class AuthService {
   final FirebaseAuth _auth;
@@ -27,7 +29,8 @@ class AuthService {
         // Get refreshed user
         user = _auth.currentUser;
 
-        print("User logged in: ${user?.email}, Verified: ${user?.emailVerified}");
+        print(
+            "User logged in: ${user?.email}, Verified: ${user?.emailVerified}");
       }
 
       return user;
@@ -42,10 +45,12 @@ class AuthService {
         case 'user-disabled':
           throw 'This user account has been disabled. Please contact support.';
         default:
-          throw 'An unknown error occurred. Please try again later. [Error: ${e.code}]';
+          throw 'An unknown error occurred. Please try again later. [Error: ${e
+              .code}]';
       }
     } catch (e) {
-      throw 'An error occurred. Please try again later. Details: ${e.toString()}';
+      throw 'An error occurred. Please try again later. Details: ${e
+          .toString()}';
     }
   }
 
@@ -77,7 +82,8 @@ class AuthService {
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Please sign in again to request a new verification email.'),
+            content: Text(
+                'Please sign in again to request a new verification email.'),
             backgroundColor: Colors.orange,
           ),
         );
@@ -91,7 +97,8 @@ class AuthService {
         await user.sendEmailVerification();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('A new verification email has been sent. Please check your inbox.'),
+            content: Text(
+                'A new verification email has been sent. Please check your inbox.'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 5),
           ),
@@ -99,7 +106,8 @@ class AuthService {
       } else if (user != null && user.emailVerified) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Your email is already verified! You can continue using the app.'),
+            content: Text(
+                'Your email is already verified! You can continue using the app.'),
             backgroundColor: Colors.green,
           ),
         );
@@ -140,10 +148,12 @@ class AuthService {
         case 'invalid-email':
           throw 'Invalid email format. Please enter a valid email.';
         default:
-          throw 'An unknown error occurred. Please try again later. [Error: ${e.code}]';
+          throw 'An unknown error occurred. Please try again later. [Error: ${e
+              .code}]';
       }
     } catch (e) {
-      throw 'An error occurred. Please try again later. Details: ${e.toString()}';
+      throw 'An error occurred. Please try again later. Details: ${e
+          .toString()}';
     }
   }
 
@@ -155,17 +165,37 @@ class AuthService {
         throw 'Sign-in aborted by user';
       }
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser
+          .authentication;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
-
+      UserCredential userCredential = await _auth.signInWithCredential(
+          credential);
       User? user = userCredential.user;
       print("Google sign-in: ${user?.email}");
+
+      // If the user is not null, create or update a doc in Firestore
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .set({
+          'id': user.uid,
+          'email': user.email,
+          'emailVerified': user.emailVerified,
+          'name': user.displayName ?? 'User',
+          'createdAt': FieldValue.serverTimestamp(),
+          'bio': '',
+          'location': '',
+          'gender': null,
+          'age': null,
+          'profileImageUrl': user.photoURL,
+        }, SetOptions(merge: true));
+      }
 
       return user;
     } on FirebaseAuthException catch (e) {
@@ -175,10 +205,12 @@ class AuthService {
         case 'invalid-credential':
           throw 'The Google credentials are invalid or have expired.';
         default:
-          throw 'An unknown error occurred. Please try again later. [Error: ${e.code}]';
+          throw 'An unknown error occurred. Please try again later. [Error: ${e
+              .code}]';
       }
     } catch (e) {
-      throw 'An error occurred. Please try again later. Details: ${e.toString()}';
+      throw 'An error occurred. Please try again later. Details: ${e
+          .toString()}';
     }
   }
 }
