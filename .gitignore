@@ -48,3 +48,4 @@ android/local.properties
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 
+ios/Runner/AppDelegate.swift
