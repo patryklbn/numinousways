@@ -40,17 +40,31 @@ jobs:
        continue-on-error: true
      
      # Step 7
-     - name: Run unit tests (excluding login provider tests)
+     - name: Create test helper file
        run: |
-         flutter test --coverage \
-         --exclude-tags=login-provider-tests \
-         --exclude "test/unit/services/login_provider_test.dart"
-       
+         mkdir -p test/helpers
+         cat > test/helpers/firebase_mocks.dart << 'EOL'
+         import 'package:firebase_core/firebase_core.dart';
+         import 'package:flutter_test/flutter_test.dart';
+         import 'package:mockito/mockito.dart';
+
+         class MockFirebaseApp extends Mock implements FirebaseApp {}
+
+         Future<void> setupFirebaseForTesting() async {
+           TestWidgetsFlutterBinding.ensureInitialized();
+         }
+         EOL
+     
      # Step 8
+     - name: Run unit tests (skipping login provider tests)
+       run: |
+         find test -type f -name "*test.dart" | grep -v "login_provider_test.dart" | xargs flutter test --coverage
+       
+     # Step 9
      - name: Run integration tests
        run: flutter test integration_test || true
      
-     # Step 9
+     # Step 10
      - name: Upload coverage reports
        uses: codecov/codecov-action@v3
        with:
