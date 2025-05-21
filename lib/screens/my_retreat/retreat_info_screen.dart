@@ -10,6 +10,8 @@ class RetreatInfoScreen extends StatelessWidget {
     final retreatLocation = 'Sanctuary Wellness Center';
     final retreatAddress = '123 Forest Road, Green Valley';
 
+
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Retreat Information'),

@@ -28,6 +28,13 @@ class _SmallMapWidgetState extends State<SmallMapWidget> {
     _currentZoom = widget.zoomLevel;
   }
 
+  @override
+  void dispose() {
+    // Properly dispose of the map controller to prevent view recreation issues
+    _mapController?.dispose();
+    super.dispose();
+  }
+
   void _zoomIn() async {
     final newZoom = (_currentZoom + 1).clamp(0, 20).toDouble();
     _mapController?.animateCamera(CameraUpdate.zoomTo(newZoom));
@@ -57,6 +64,8 @@ class _SmallMapWidgetState extends State<SmallMapWidget> {
         Container(
           height: 300,
           child: GoogleMap(
+            // Add a unique key based on latitude and longitude to ensure recreation
+            key: ValueKey('map-${widget.latitude}-${widget.longitude}'),
             mapType: _currentMapType,
             initialCameraPosition: CameraPosition(
               target: LatLng(widget.latitude, widget.longitude),
@@ -67,9 +76,9 @@ class _SmallMapWidgetState extends State<SmallMapWidget> {
             },
             markers: {
               Marker(
-                markerId: MarkerId('location_marker'),
+                markerId: const MarkerId('location_marker'),
                 position: LatLng(widget.latitude, widget.longitude),
-                infoWindow: InfoWindow(title: 'Retreat Location'),
+                infoWindow: const InfoWindow(title: 'Retreat Location'),
               ),
             },
             zoomControlsEnabled: false,
@@ -83,27 +92,27 @@ class _SmallMapWidgetState extends State<SmallMapWidget> {
           child: Column(
             children: [
               FloatingActionButton(
-                heroTag: "zoom_in",
+                heroTag: "zoom_in_${widget.latitude}_${widget.longitude}",
                 onPressed: _zoomIn,
                 mini: true,
                 backgroundColor: Colors.white,
-                child: Icon(Icons.zoom_in),
+                child: const Icon(Icons.zoom_in),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               FloatingActionButton(
-                heroTag: "zoom_out",
+                heroTag: "zoom_out_${widget.latitude}_${widget.longitude}",
                 onPressed: _zoomOut,
                 mini: true,
                 backgroundColor: Colors.white,
-                child: Icon(Icons.zoom_out),
+                child: const Icon(Icons.zoom_out),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               FloatingActionButton(
-                heroTag: "map_toggle",
+                heroTag: "map_toggle_${widget.latitude}_${widget.longitude}",
                 onPressed: _toggleMapType,
                 mini: true,
                 backgroundColor: Colors.white,
-                child: Icon(Icons.map),
+                child: const Icon(Icons.map),
               ),
             ],
           ),

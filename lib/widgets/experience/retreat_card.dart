@@ -22,15 +22,12 @@ class RetreatCard extends StatelessWidget {
   static const Color accentColor = Color(0xFFD43323); // Red color
   static const Color subtitleColor = Color(0xFFA0A0A0); // Grey color
   static const Color iconBackgroundColor = Colors.white; // Background for icons
-
-
   static const Color detailsBackgroundColor = Colors.white; // Clean white background
-
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 5,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(
@@ -42,7 +39,7 @@ class RetreatCard extends StatelessWidget {
             // Retreat Image with Gradient Overlay
             if (retreat.cardImageUrl != null && retreat.cardImageUrl!.isNotEmpty)
               ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 child: Stack(
                   children: [
                     CachedNetworkImage(
@@ -92,7 +89,7 @@ class RetreatCard extends StatelessWidget {
                       child: Text(
                         retreat.title,
                         style: GoogleFonts.lato(
-                          textStyle: TextStyle(
+                          textStyle: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -112,7 +109,7 @@ class RetreatCard extends StatelessWidget {
               ),
             Container(
               width: double.infinity,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: detailsBackgroundColor,
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
               ),
@@ -124,12 +121,12 @@ class RetreatCard extends StatelessWidget {
                   Row(
                     children: [
                       _buildIconWithBackground(FontAwesomeIcons.mapMarkerAlt),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           retreat.location,
                           style: GoogleFonts.lato(
-                            textStyle: TextStyle(
+                            textStyle: const TextStyle(
                               color: primaryColor,
                               fontSize: 14,
                             ),
@@ -138,17 +135,17 @@ class RetreatCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   // Dates
                   Row(
                     children: [
                       _buildIconWithBackground(FontAwesomeIcons.calendarAlt),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           '${_formatDate(retreat.startDate)} - ${_formatDate(retreat.endDate)}',
                           style: GoogleFonts.lato(
-                            textStyle: TextStyle(
+                            textStyle: const TextStyle(
                               color: primaryColor,
                               fontSize: 14,
                             ),
@@ -157,18 +154,23 @@ class RetreatCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 12),
-                  // Cost
+                  const SizedBox(height: 12),
+                  // Cost - Only show if cost is greater than 0, otherwise show "Members Only"
                   Row(
                     children: [
-                      _buildIconWithBackground(FontAwesomeIcons.poundSign),
-                      SizedBox(width: 8),
+                      _buildIconWithBackground(
+                          retreat.cost > 0 ? FontAwesomeIcons.poundSign : FontAwesomeIcons.userLock
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        '£${retreat.cost}',
+                        retreat.cost > 0
+                            ? '£${retreat.cost}'
+                            : 'Students Only',
                         style: GoogleFonts.lato(
                           textStyle: TextStyle(
-                            color: primaryColor,
+                            color: retreat.cost > 0 ? primaryColor : accentColor,
                             fontSize: 14,
+                            fontWeight: retreat.cost > 0 ? FontWeight.normal : FontWeight.bold,
                           ),
                         ),
                       ),
@@ -192,11 +194,11 @@ class RetreatCard extends StatelessWidget {
   /// Reusable widget for icons with background
   Widget _buildIconWithBackground(IconData iconData) {
     return Container(
-      padding: EdgeInsets.all(6),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: iconBackgroundColor,
         borderRadius: BorderRadius.circular(8),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 4,

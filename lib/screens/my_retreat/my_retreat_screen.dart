@@ -36,8 +36,6 @@ class _GalleryViewerState extends State<GalleryViewer> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
-
-
   }
 
   @override
@@ -266,42 +264,52 @@ class MyRetreatScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        IntrinsicHeight(
+        SizedBox(
+          height: 180, // Fixed height for both cards
           child: Row(
             children: [
               Expanded(
-                child: _buildFeatureCard(
-                  context: context,
-                  icon: Icons.check_circle_outline,
-                  title: 'Preparation',
-                  description: prepDescription,
-                  routeName: '/preparation',
-                  width: double.infinity,
+                child: AspectRatio(
+                  aspectRatio: 1.0, // Use fixed aspect ratio
+                  child: _buildFeatureCard(
+                    context: context,
+                    icon: Icons.check_circle_outline,
+                    title: 'Preparation',
+                    description: prepDescription,
+                    routeName: '/preparation',
+                    width: double.infinity,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: _buildFeatureCard(
-                  context: context,
-                  icon: Icons.calendar_today_outlined,
-                  title: 'Experience',
-                  description: expDescription,
-                  routeName: '/experience',
-                  width: double.infinity,
+                child: AspectRatio(
+                  aspectRatio: 1.0, // Matching aspect ratio
+                  child: _buildFeatureCard(
+                    context: context,
+                    icon: Icons.calendar_today_outlined,
+                    title: 'Experience',
+                    description: expDescription,
+                    routeName: '/experience',
+                    width: double.infinity,
+                  ),
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        _buildFeatureCard(
-          context: context,
-          icon: Icons.self_improvement,
-          title: 'Integration',
-          description: intDescription,
-          routeName: '/integration',
-          width: availableWidth,
-          isLarge: true,
+        AspectRatio(
+          aspectRatio: 2.3,
+          child: _buildFeatureCard(
+            context: context,
+            icon: Icons.self_improvement,
+            title: 'Integration',
+            description: intDescription,
+            routeName: '/integration',
+            width: availableWidth,
+            isLarge: true,
+          ),
         ),
       ],
     );

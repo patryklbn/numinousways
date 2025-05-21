@@ -141,7 +141,6 @@ class MyApp extends StatelessWidget {
 
       // Main App Routes
       '/my_retreat': (context) => const MyRetreatScreen(),
-      '/retreat_info': (context) => const RetreatInfoScreen(),
       '/preparation': (context) => PreparationCourseScreen(),
       '/experience': (context) => const ExperienceMainScreen(),
       '/integration': (context) => IntegrationCourseScreen(),

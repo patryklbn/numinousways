@@ -17,6 +17,7 @@ import '../facilitator_profile_screen.dart';
 import '../../../widgets/experience/small_map_widget.dart';
 import '../../../viewmodels/experience_provider.dart';
 
+
 class ExperienceMainScreen extends StatefulWidget {
   const ExperienceMainScreen({Key? key}) : super(key: key);
 
@@ -465,7 +466,7 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> with Single
   }
 
   /// Enhanced gallery viewer with swipe gestures
-  void _showGallery(BuildContext context, List<String> images, int initialIndex, String tag) {
+  void _showGallery(BuildContext context, List<String> images, int initialIndex, String tag, {String? venueName}) {
     Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) {
@@ -489,7 +490,9 @@ class _ExperienceMainScreenState extends State<ExperienceMainScreen> with Single
                   builder: (context, snapshot) {
                     final currentIndex = snapshot.data ?? initialIndex;
                     return Text(
-                      'Image ${currentIndex + 1}/${images.length}',
+                      venueName != null
+                          ? '${venueName} (${currentIndex + 1}/${images.length})'
+                          : 'Image ${currentIndex + 1}/${images.length}',
                       style: const TextStyle(color: Colors.white),
                     );
                   },
